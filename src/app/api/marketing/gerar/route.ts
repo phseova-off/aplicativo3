@@ -8,6 +8,9 @@ const gerarSchema = z.object({
   publico_alvo: z.string().min(1),
   periodo_dias: z.number().int().min(7).max(30),
   foco: z.string().min(1),
+  // Mês/ano para o cronograma (padrão: mês corrente)
+  mes: z.number().int().min(1).max(12).optional(),
+  ano: z.number().int().min(2024).optional(),
 })
 
 export async function GET() {
@@ -17,11 +20,12 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data, error } = await supabase
-    .from('marketing_cronogramas')
+    .from('cronogramas_marketing')
     .select('*')
-    .eq('user_id', user.id)
-    .order('gerado_em', { ascending: false })
-    .limit(20)
+    .eq('confeiteiro_id', user.id)
+    .order('ano', { ascending: false })
+    .order('mes', { ascending: false })
+    .limit(24)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -34,13 +38,13 @@ export async function POST(request: Request) {
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Rate limit: 5 per day
+  // Rate limit: 5 gerações por dia
   const today = new Date().toISOString().split('T')[0]
   const { count } = await supabase
-    .from('marketing_cronogramas')
+    .from('cronogramas_marketing')
     .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .gte('gerado_em', `${today}T00:00:00Z`)
+    .eq('confeiteiro_id', user.id)
+    .gte('created_at', `${today}T00:00:00Z`)
 
   if ((count ?? 0) >= 5) {
     return NextResponse.json(
@@ -56,26 +60,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 })
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('nome_negocio')
+  const now = new Date()
+  const mes = parsed.data.mes ?? (now.getMonth() + 1)
+  const ano = parsed.data.ano ?? now.getFullYear()
+
+  const { data: confeiteiro } = await supabase
+    .from('confeiteiros')
+    .select('nome')
     .eq('id', user.id)
     .single()
 
   const posts = await generateMarketingSchedule({
-    ...parsed.data,
-    nome_negocio: profile?.nome_negocio ?? undefined,
+    tipo_negocio: parsed.data.tipo_negocio,
+    publico_alvo: parsed.data.publico_alvo,
+    periodo_dias: parsed.data.periodo_dias,
+    foco: parsed.data.foco,
+    nome_negocio: confeiteiro?.nome ?? undefined,
   })
 
-  const titulo = `${parsed.data.tipo_negocio} — ${parsed.data.foco} (${parsed.data.periodo_dias} dias)`
-
+  // UPSERT: se já existe cronograma para esse mês/ano, substitui o conteúdo
   const { data: saved, error } = await supabase
-    .from('marketing_cronogramas')
-    .insert({
-      user_id: user.id,
-      titulo,
-      conteudo: posts,
-    })
+    .from('cronogramas_marketing')
+    .upsert(
+      {
+        confeiteiro_id: user.id,
+        mes,
+        ano,
+        conteudo: posts,
+        datas_comemorativas: [],
+      },
+      { onConflict: 'confeiteiro_id,mes,ano' }
+    )
     .select()
     .single()
 
@@ -97,10 +112,10 @@ export async function DELETE(request: Request) {
   if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 })
 
   const { error } = await supabase
-    .from('marketing_cronogramas')
+    .from('cronogramas_marketing')
     .delete()
     .eq('id', id)
-    .eq('user_id', user.id)
+    .eq('confeiteiro_id', user.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

@@ -31,9 +31,9 @@ export function OnboardingForm() {
     }
 
     const { error } = await supabase
-      .from('profiles')
+      .from('confeiteiros')
       .update({
-        nome_negocio: values.nome_negocio,
+        nome: values.nome_negocio,
         telefone: values.telefone ?? null,
         cidade: values.cidade ?? null,
         onboarding_completo: true,

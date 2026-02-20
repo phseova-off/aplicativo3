@@ -17,8 +17,8 @@ export default async function DashboardLayout({
   }
 
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('nome_negocio, plano, onboarding_completo')
+    .from('confeiteiros')
+    .select('nome, plano, onboarding_completo')
     .eq('id', user.id)
     .single()
 
@@ -28,8 +28,8 @@ export default async function DashboardLayout({
 
   return (
     <AppLayout
-      userName={profile?.nome_negocio ?? user.email ?? 'Usuário'}
-      planName={profile?.plano ?? 'gratuito'}
+      userName={profile?.nome ?? user.email ?? 'Usuário'}
+      planName={profile?.plano ?? 'free'}
     >
       {children}
     </AppLayout>
