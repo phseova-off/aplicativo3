@@ -1,7 +1,6 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import type { Database } from './types'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -14,8 +13,9 @@ export function createSupabaseBrowserClient() {
 }
 
 // ── Server client (Server Components, Route Handlers, Actions) ─
-// Must be called inside an async context where cookies() is available.
+// Dynamic import keeps this module safe to bundle alongside Client Components.
 export async function createSupabaseServerClient() {
+  const { cookies } = await import('next/headers')
   const cookieStore = await cookies()
 
   return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
