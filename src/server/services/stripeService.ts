@@ -1,20 +1,21 @@
 import Stripe from 'stripe'
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-01-27.acacia',
+  apiVersion: '2025-02-24.acacia',
   typescript: true,
 })
 
 export const PLANS = {
-  basico: {
-    name: 'Básico',
-    priceId: process.env.STRIPE_PRICE_ID_BASICO!,
-    amount: 4900, // R$49 in centavos
+  // "starter" aligns with the DB enum (PlanoTipo = 'free' | 'starter' | 'pro')
+  starter: {
+    name: 'Starter',
+    priceId: process.env.STRIPE_PRICE_ID_STARTER ?? process.env.STRIPE_PRICE_ID_BASICO!,
+    amount: 4990, // R$49,90 in centavos
   },
   pro: {
     name: 'Pro',
     priceId: process.env.STRIPE_PRICE_ID_PRO!,
-    amount: 9900, // R$99 in centavos
+    amount: 9700, // R$97 in centavos
   },
 } as const
 
@@ -72,4 +73,15 @@ export function constructStripeEvent(
     signature,
     process.env.STRIPE_WEBHOOK_SECRET!
   )
+}
+
+export async function createBillingPortalSession(
+  customerId: string,
+  returnUrl: string
+): Promise<string> {
+  const session = await stripe.billingPortal.sessions.create({
+    customer: customerId,
+    return_url: returnUrl,
+  })
+  return session.url
 }

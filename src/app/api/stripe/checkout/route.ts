@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from '@/server/db/client'
 import { createCheckoutSession, type PlanKey } from '@/server/services/stripeService'
 
 const checkoutSchema = z.object({
-  planKey: z.enum(['basico', 'pro']),
+  planKey: z.enum(['starter', 'pro']),
 })
 
 export async function POST(request: Request) {

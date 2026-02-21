@@ -10,6 +10,7 @@ import { loginSchema, type LoginFormValues } from '../schemas/auth.schema'
 import { createSupabaseBrowserClient } from '@/server/db/client'
 import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
+import { GoogleButton } from './GoogleButton'
 
 export function LoginForm() {
   const router = useRouter()
@@ -76,7 +77,18 @@ export function LoginForm() {
         Entrar
       </Button>
 
-      <p className="text-center text-sm text-gray-600">
+      <div className="relative my-4">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-200" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-white px-2 text-gray-400">ou</span>
+        </div>
+      </div>
+
+      <GoogleButton label="Entrar com Google" />
+
+      <p className="text-center text-sm text-gray-600 mt-2">
         Não tem conta?{' '}
         <Link href="/cadastro" className="text-primary-600 font-medium hover:text-primary-700">
           Criar conta grátis

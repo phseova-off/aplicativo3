@@ -10,6 +10,7 @@ import { cadastroSchema, type CadastroFormValues } from '../schemas/auth.schema'
 import { createSupabaseBrowserClient } from '@/server/db/client'
 import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
+import { GoogleButton } from './GoogleButton'
 
 export function CadastroForm() {
   const router = useRouter()
@@ -78,6 +79,17 @@ export function CadastroForm() {
       <Button type="submit" loading={isSubmitting} className="w-full">
         Criar conta grátis
       </Button>
+
+      <div className="relative my-1">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-200" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-white px-2 text-gray-400">ou</span>
+        </div>
+      </div>
+
+      <GoogleButton label="Cadastrar com Google" />
 
       <p className="text-center text-sm text-gray-600">
         Já tem conta?{' '}
