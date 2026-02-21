@@ -22,7 +22,7 @@ const navLinks = [
   { href: '/pedidos', label: 'Pedidos', icon: ClipboardList },
   { href: '/producao', label: 'Produção', icon: CakeSlice },
   { href: '/financeiro', label: 'Financeiro', icon: TrendingUp },
-  { href: '/marketing', label: 'Marketing', icon: Megaphone },
+  { href: '/marketing/cronograma', label: 'Marketing', icon: Megaphone },
 ]
 
 export function Sidebar() {
