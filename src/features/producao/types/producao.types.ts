@@ -1,44 +1,59 @@
-export type ProducaoEtapa = 'preparo' | 'assar' | 'decorar' | 'embalar' | 'pronto'
-export type ProducaoStatus = 'pendente' | 'em_andamento' | 'concluido'
+import type { Produto, ProducaoLote, Ingrediente, PedidoStatus } from '@/server/db/types'
 
-export const ETAPA_LABELS: Record<ProducaoEtapa, string> = {
-  preparo: 'Preparo',
-  assar: 'Assar',
-  decorar: 'Decorar',
-  embalar: 'Embalar',
-  pronto: 'Pronto',
+export type { Ingrediente }
+
+// ─── Lote ─────────────────────────────────────────────────────
+
+export interface LoteComProgresso extends ProducaoLote {
+  progresso: number // 0–100
 }
 
-export const ETAPA_EMOJIS: Record<ProducaoEtapa, string> = {
-  preparo: '🥣',
-  assar: '🔥',
-  decorar: '🎨',
-  embalar: '📦',
-  pronto: '✅',
-}
+// ─── Pedido para produção (daily view) ─────────────────────────
 
-export const STATUS_LABELS: Record<ProducaoStatus, string> = {
-  pendente: 'Pendente',
-  em_andamento: 'Em Andamento',
-  concluido: 'Concluído',
-}
-
-export const ETAPAS_ORDER: ProducaoEtapa[] = ['preparo', 'assar', 'decorar', 'embalar', 'pronto']
-
-export interface ProducaoWithPedido {
+export interface PedidoProducao {
   id: string
-  pedido_id: string
-  user_id: string
-  etapa: ProducaoEtapa
-  status: ProducaoStatus
+  confeiteiro_id: string
+  cliente_nome: string
+  cliente_telefone: string | null
+  status: PedidoStatus
+  canal: string
+  data_entrega: string | null
+  valor_total: number
   observacoes: string | null
   created_at: string
   updated_at: string
-  pedidos?: {
+  itens_pedido: {
     id: string
-    cliente_nome: string
-    descricao: string | null
-    data_entrega: string | null
-    valor: number
-  } | null
+    nome_produto: string
+    quantidade: number
+    preco_unitario: number
+    subtotal: number
+    produto_id: string | null
+  }[]
+}
+
+// ─── Receita (Produto com ficha técnica) ───────────────────────
+
+export interface ReceitaComCusto extends Produto {
+  custo_calculado: number       // sum(ingrediente.qtd * ingrediente.custo_unitario)
+  margem_percentual: number     // (preco - custo_calculado) / preco * 100
+}
+
+// ─── Agrupamento semanal ───────────────────────────────────────
+
+export interface DiaSemana {
+  data: string            // YYYY-MM-DD
+  label: string           // "Seg 18"
+  pedidos: PedidoProducao[]
+  custo_estimado: number
+  valor_total: number
+}
+
+// ─── Alerta de ingrediente ─────────────────────────────────────
+
+export interface AlertaIngrediente {
+  nome: string
+  unidade: string
+  total_necessario: number
+  pedidos_afetados: number
 }
