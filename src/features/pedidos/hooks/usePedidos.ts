@@ -2,11 +2,18 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import type { PedidoWithItens } from '../types/pedido.types'
+import type { PedidoWithItens, PedidoFilters } from '../types/pedido.types'
 import type { PedidoFormValues, PedidoUpdateValues } from '../schemas/pedido.schema'
 
-async function fetchPedidos(): Promise<PedidoWithItens[]> {
-  const res = await fetch('/api/pedidos')
+async function fetchPedidos(filters?: PedidoFilters): Promise<PedidoWithItens[]> {
+  const params = new URLSearchParams()
+  if (filters?.search)      params.set('search', filters.search)
+  if (filters?.canal)       params.set('canal', filters.canal)
+  if (filters?.data_inicio) params.set('data_inicio', filters.data_inicio)
+  if (filters?.data_fim)    params.set('data_fim', filters.data_fim)
+
+  const qs = params.toString()
+  const res = await fetch(`/api/pedidos${qs ? `?${qs}` : ''}`)
   if (!res.ok) throw new Error('Erro ao buscar pedidos')
   return res.json()
 }
@@ -30,7 +37,13 @@ async function createPedido(data: PedidoFormValues): Promise<PedidoWithItens> {
   return res.json()
 }
 
-async function updatePedido({ id, data }: { id: string; data: PedidoUpdateValues }): Promise<PedidoWithItens> {
+async function updatePedido({
+  id,
+  data,
+}: {
+  id: string
+  data: PedidoUpdateValues
+}): Promise<PedidoWithItens> {
   const res = await fetch(`/api/pedidos/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -45,10 +58,10 @@ async function deletePedido(id: string): Promise<void> {
   if (!res.ok) throw new Error('Erro ao excluir pedido')
 }
 
-export function usePedidos() {
+export function usePedidos(filters?: PedidoFilters) {
   return useQuery({
-    queryKey: ['pedidos'],
-    queryFn: fetchPedidos,
+    queryKey: ['pedidos', filters],
+    queryFn: () => fetchPedidos(filters),
   })
 }
 
