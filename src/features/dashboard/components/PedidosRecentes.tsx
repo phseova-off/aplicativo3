@@ -3,26 +3,28 @@ import { ArrowRight } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Badge } from '@/shared/components/ui/Badge'
 import { formatCurrency, formatDate } from '@/shared/lib/utils'
-import type { PedidoRecente } from '../types/dashboard.types'
+import type { ProximoPedido } from '../types/dashboard.types'
 
 const statusVariants: Record<string, 'warning' | 'info' | 'success' | 'purple' | 'error' | 'default'> = {
-  pendente: 'warning',
-  em_producao: 'info',
-  pronto: 'success',
-  entregue: 'purple',
-  cancelado: 'error',
+  novo:       'warning',
+  confirmado: 'info',
+  producao:   'purple',
+  pronto:     'success',
+  entregue:   'default',
+  cancelado:  'error',
 }
 
 const statusLabels: Record<string, string> = {
-  pendente: 'Pendente',
-  em_producao: 'Em Produção',
-  pronto: 'Pronto',
-  entregue: 'Entregue',
-  cancelado: 'Cancelado',
+  novo:       'Novo',
+  confirmado: 'Confirmado',
+  producao:   'Em Produção',
+  pronto:     'Pronto',
+  entregue:   'Entregue',
+  cancelado:  'Cancelado',
 }
 
 interface PedidosRecentesProps {
-  pedidos: PedidoRecente[]
+  pedidos: ProximoPedido[]
 }
 
 export function PedidosRecentes({ pedidos }: PedidosRecentesProps) {
@@ -70,7 +72,7 @@ export function PedidosRecentes({ pedidos }: PedidosRecentesProps) {
                   {statusLabels[pedido.status] ?? pedido.status}
                 </Badge>
                 <span className="text-sm font-semibold text-gray-900">
-                  {formatCurrency(pedido.valor)}
+                  {formatCurrency(pedido.valor_total)}
                 </span>
               </div>
             </Link>

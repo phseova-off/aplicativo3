@@ -13,6 +13,6 @@ export function useDashboardMetricas() {
   return useQuery({
     queryKey: ['dashboard_metricas'],
     queryFn: fetchMetricas,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 5 * 60 * 1000,   // 5 minutes — matches server revalidate
   })
 }
