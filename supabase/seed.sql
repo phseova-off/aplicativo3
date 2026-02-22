@@ -89,7 +89,7 @@ INSERT INTO auth.users (
 SET session_replication_role = DEFAULT;
 
 -- ┌──────────────────────────────────────────────────────────┐
--- │  CONFEITEIROS                                            │
+-- │  CONFEITEIROS (perfil legado — compatibilidade)          │
 -- │  (normalmente criado pelo trigger handle_new_confeiteiro) │
 -- └──────────────────────────────────────────────────────────┘
 
@@ -121,202 +121,267 @@ ON CONFLICT (id) DO UPDATE SET
   onboarding_completo = EXCLUDED.onboarding_completo;
 
 -- ┌──────────────────────────────────────────────────────────┐
+-- │  CONFEITARIAS (novo schema v2)                           │
+-- └──────────────────────────────────────────────────────────┘
+
+INSERT INTO public.confeitarias (id, nome, cidade, telefone, plano, mes_referencia)
+VALUES
+  (
+    'a1b2c3d4-0000-0000-0000-000000000001',
+    'Doceria da Maria',
+    'São Paulo',
+    '(11) 99999-0001',
+    'starter',
+    DATE_TRUNC('month', NOW())::DATE
+  ),
+  (
+    'a1b2c3d4-0000-0000-0000-000000000002',
+    'Atelier da Ana',
+    'Rio de Janeiro',
+    '(21) 99999-0002',
+    'free',
+    DATE_TRUNC('month', NOW())::DATE
+  )
+ON CONFLICT (id) DO UPDATE SET
+  nome           = EXCLUDED.nome,
+  plano          = EXCLUDED.plano,
+  mes_referencia = EXCLUDED.mes_referencia;
+
+-- ┌──────────────────────────────────────────────────────────┐
+-- │  CONFEITARIA_MEMBROS                                     │
+-- └──────────────────────────────────────────────────────────┘
+
+INSERT INTO public.confeitaria_membros (confeitaria_id, user_id, role)
+VALUES
+  -- Maria é owner da própria confeitaria
+  ('a1b2c3d4-0000-0000-0000-000000000001', 'a1b2c3d4-0000-0000-0000-000000000001', 'owner'),
+  -- Ana é owner da própria confeitaria
+  ('a1b2c3d4-0000-0000-0000-000000000002', 'a1b2c3d4-0000-0000-0000-000000000002', 'owner'),
+  -- Ana também é editora na confeitaria da Maria (demo multi-usuário)
+  ('a1b2c3d4-0000-0000-0000-000000000001', 'a1b2c3d4-0000-0000-0000-000000000002', 'editor')
+ON CONFLICT (confeitaria_id, user_id) DO UPDATE SET role = EXCLUDED.role;
+
+-- ┌──────────────────────────────────────────────────────────┐
+-- │  CLIENTES — Confeitaria da Maria                         │
+-- └──────────────────────────────────────────────────────────┘
+
+INSERT INTO public.clientes (id, confeitaria_id, nome, telefone, canal_preferido, total_pedidos, valor_total_compras, ultima_compra)
+VALUES
+  (
+    'd0000001-0000-0000-0000-000000000001',
+    'a1b2c3d4-0000-0000-0000-000000000001',
+    'Fernanda Lima',
+    '(11) 98765-4321',
+    'whatsapp',
+    3, 162.00,
+    CURRENT_DATE - INTERVAL '7 days'
+  ),
+  (
+    'd0000001-0000-0000-0000-000000000002',
+    'a1b2c3d4-0000-0000-0000-000000000001',
+    'Carlos Eduardo',
+    '(11) 97654-3210',
+    'instagram',
+    2, 90.00,
+    CURRENT_DATE - INTERVAL '30 days'
+  ),
+  (
+    'd0000001-0000-0000-0000-000000000003',
+    'a1b2c3d4-0000-0000-0000-000000000001',
+    'Beatriz Oliveira',
+    '(11) 96543-2109',
+    'whatsapp',
+    1, 135.00,
+    CURRENT_DATE - INTERVAL '60 days'
+  ),
+  (
+    'd0000001-0000-0000-0000-000000000004',
+    'a1b2c3d4-0000-0000-0000-000000000001',
+    'Juliana Costa',
+    '(11) 95432-1098',
+    'instagram',
+    2, 108.00,
+    CURRENT_DATE - INTERVAL '5 days'
+  )
+ON CONFLICT (confeitaria_id, telefone) DO UPDATE SET
+  nome                = EXCLUDED.nome,
+  total_pedidos       = EXCLUDED.total_pedidos,
+  valor_total_compras = EXCLUDED.valor_total_compras,
+  ultima_compra       = EXCLUDED.ultima_compra;
+
+-- ┌──────────────────────────────────────────────────────────┐
+-- │  INGREDIENTES_CATALOGO — Confeitaria da Maria            │
+-- └──────────────────────────────────────────────────────────┘
+
+INSERT INTO public.ingredientes_catalogo (id, confeitaria_id, nome, unidade, preco_atual, preco_anterior, fornecedor)
+VALUES
+  ('e0000001-0000-0000-0000-000000000001', 'a1b2c3d4-0000-0000-0000-000000000001', 'Chocolate belga 70%',    'g',  0.0800, 0.0750, 'Importadora Cacau Premium'),
+  ('e0000001-0000-0000-0000-000000000002', 'a1b2c3d4-0000-0000-0000-000000000001', 'Chocolate ao leite',     'g',  0.0500, NULL,   'Distribuidora Doce Brasil'),
+  ('e0000001-0000-0000-0000-000000000003', 'a1b2c3d4-0000-0000-0000-000000000001', 'Chocolate branco',       'g',  0.0600, NULL,   'Distribuidora Doce Brasil'),
+  ('e0000001-0000-0000-0000-000000000004', 'a1b2c3d4-0000-0000-0000-000000000001', 'Creme de leite',         'ml', 0.0100, NULL,   'Mercado local'),
+  ('e0000001-0000-0000-0000-000000000005', 'a1b2c3d4-0000-0000-0000-000000000001', 'Manteiga sem sal',       'g',  0.0200, NULL,   'Mercado local'),
+  ('e0000001-0000-0000-0000-000000000006', 'a1b2c3d4-0000-0000-0000-000000000001', 'Cacau em pó',            'g',  0.0150, NULL,   'Casa de Confeitaria'),
+  ('e0000001-0000-0000-0000-000000000007', 'a1b2c3d4-0000-0000-0000-000000000001', 'Pasta de avelã',         'g',  0.0600, 0.0550, 'Importadora Cacau Premium'),
+  ('e0000001-0000-0000-0000-000000000008', 'a1b2c3d4-0000-0000-0000-000000000001', 'Wafer triturado',        'g',  0.0300, NULL,   'Distribuidora Doce Brasil'),
+  ('e0000001-0000-0000-0000-000000000009', 'a1b2c3d4-0000-0000-0000-000000000001', 'Avelãs inteiras',        'un', 0.1500, NULL,   'Importadora Cacau Premium'),
+  ('e0000001-0000-0000-0000-000000000010', 'a1b2c3d4-0000-0000-0000-000000000001', 'Morango fresco',         'g',  0.0200, NULL,   'Feira do produtor'),
+  ('e0000001-0000-0000-0000-000000000011', 'a1b2c3d4-0000-0000-0000-000000000001', 'Açúcar de confeiteiro', 'g',  0.0050, NULL,   'Mercado local'),
+  ('e0000001-0000-0000-0000-000000000012', 'a1b2c3d4-0000-0000-0000-000000000001', 'Polpa de maracujá',      'ml', 0.0250, NULL,   'Feira do produtor'),
+  ('e0000001-0000-0000-0000-000000000013', 'a1b2c3d4-0000-0000-0000-000000000001', 'Açúcar cristal',         'g',  0.0050, NULL,   'Mercado local'),
+  ('e0000001-0000-0000-0000-000000000014', 'a1b2c3d4-0000-0000-0000-000000000001', 'Flor de sal',            'g',  0.0500, NULL,   'Empório Gourmet')
+ON CONFLICT (confeitaria_id, nome) DO UPDATE SET
+  preco_atual    = EXCLUDED.preco_atual,
+  preco_anterior = EXCLUDED.preco_anterior,
+  fornecedor     = EXCLUDED.fornecedor;
+
+-- ┌──────────────────────────────────────────────────────────┐
 -- │  PRODUTOS — Cardápio da Maria                            │
 -- └──────────────────────────────────────────────────────────┘
 
-INSERT INTO public.produtos (id, confeiteiro_id, nome, descricao, preco, custo, categoria, ativo, ingredientes)
+INSERT INTO public.produtos (id, confeiteiro_id, confeitaria_id, nome, descricao, preco, preco_venda, custo, custo_calculado, categoria, ativo, ingredientes)
 VALUES
-  (
-    'b0000001-0000-0000-0000-000000000001',
-    'a1b2c3d4-0000-0000-0000-000000000001',
-    'Trufa de Chocolate Belga',
-    'Trufa artesanal com ganache de chocolate belga 70%, banho de chocolate ao leite e cacau em pó.',
-    4.50,
-    1.20,
-    'trufa',
-    TRUE,
-    '[
-      {"nome": "Chocolate belga 70%", "quantidade": 200, "unidade": "g",  "custo_unitario": 0.08},
-      {"nome": "Creme de leite",      "quantidade": 100, "unidade": "ml", "custo_unitario": 0.01},
-      {"nome": "Manteiga sem sal",    "quantidade": 20,  "unidade": "g",  "custo_unitario": 0.02},
-      {"nome": "Cacau em pó",         "quantidade": 30,  "unidade": "g",  "custo_unitario": 0.015}
-    ]'::jsonb
-  ),
-  (
-    'b0000001-0000-0000-0000-000000000002',
-    'a1b2c3d4-0000-0000-0000-000000000001',
-    'Trufa de Ferrero Rocher',
-    'Trufa recheada com pasta de avelã e wafer crocante, coberta com chocolate ao leite e avelãs.',
-    5.50,
-    1.80,
-    'trufa',
-    TRUE,
-    '[
-      {"nome": "Pasta de avelã",      "quantidade": 150, "unidade": "g",  "custo_unitario": 0.06},
-      {"nome": "Chocolate ao leite",  "quantidade": 200, "unidade": "g",  "custo_unitario": 0.05},
-      {"nome": "Wafer triturado",     "quantidade": 50,  "unidade": "g",  "custo_unitario": 0.03},
-      {"nome": "Avelãs inteiras",     "quantidade": 30,  "unidade": "unid","custo_unitario": 0.15}
-    ]'::jsonb
-  ),
-  (
-    'b0000001-0000-0000-0000-000000000003',
-    'a1b2c3d4-0000-0000-0000-000000000001',
-    'Bombom Recheado de Morango',
-    'Bombom de chocolate branco com recheio cremoso de morango natural.',
-    3.80,
-    0.95,
-    'bombom',
-    TRUE,
-    '[
-      {"nome": "Chocolate branco",    "quantidade": 200, "unidade": "g",  "custo_unitario": 0.06},
-      {"nome": "Morango fresco",      "quantidade": 100, "unidade": "g",  "custo_unitario": 0.02},
-      {"nome": "Creme de leite",      "quantidade": 50,  "unidade": "ml", "custo_unitario": 0.01},
-      {"nome": "Açúcar de confeiteiro","quantidade": 20, "unidade": "g",  "custo_unitario": 0.005}
-    ]'::jsonb
-  ),
-  (
-    'b0000001-0000-0000-0000-000000000004',
-    'a1b2c3d4-0000-0000-0000-000000000001',
-    'Kit Presente 9 Trufas',
-    'Caixa elegante com 9 trufas sortidas: 3 chocolate belga, 3 Ferrero e 3 sortidas.',
-    45.00,
-    14.00,
-    'kit',
-    TRUE,
-    '[]'::jsonb
-  ),
-  (
-    'b0000001-0000-0000-0000-000000000005',
-    'a1b2c3d4-0000-0000-0000-000000000001',
-    'Trufa de Maracujá',
-    'Trufa de chocolate branco com recheio azedo-doce de maracujá fresco.',
-    4.80,
-    1.30,
-    'trufa',
-    TRUE,
-    '[
-      {"nome": "Chocolate branco",  "quantidade": 200, "unidade": "g",  "custo_unitario": 0.06},
-      {"nome": "Polpa de maracujá", "quantidade": 80,  "unidade": "ml", "custo_unitario": 0.025},
-      {"nome": "Creme de leite",    "quantidade": 60,  "unidade": "ml", "custo_unitario": 0.01}
-    ]'::jsonb
-  ),
-  (
-    'b0000001-0000-0000-0000-000000000006',
-    'a1b2c3d4-0000-0000-0000-000000000001',
-    'Bombom de Caramelo Salgado',
-    'Bombom de chocolate ao leite com recheio de caramelo artesanal e flor de sal.',
-    4.20,
-    1.10,
-    'bombom',
-    TRUE,
-    '[
-      {"nome": "Chocolate ao leite", "quantidade": 200, "unidade": "g",   "custo_unitario": 0.05},
-      {"nome": "Açúcar cristal",     "quantidade": 100, "unidade": "g",   "custo_unitario": 0.005},
-      {"nome": "Creme de leite",     "quantidade": 100, "unidade": "ml",  "custo_unitario": 0.01},
-      {"nome": "Flor de sal",        "quantidade": 2,   "unidade": "g",   "custo_unitario": 0.05}
-    ]'::jsonb
-  ),
+  -- rendimento: unidades que a receita rende; custo_calculado será recalculado por trigger
+  ('b0000001-0000-0000-0000-000000000001','a1b2c3d4-0000-0000-0000-000000000001','a1b2c3d4-0000-0000-0000-000000000001',
+   'Trufa de Chocolate Belga',
+   'Trufa artesanal com ganache de chocolate belga 70%, banho de chocolate ao leite e cacau em pó.',
+   4.50, 4.50, 1.20, 18.45, 'trufa', TRUE,
+   '[{"nome":"Chocolate belga 70%","quantidade":200,"unidade":"g","custo_unitario":0.08},{"nome":"Creme de leite","quantidade":100,"unidade":"ml","custo_unitario":0.01},{"nome":"Manteiga sem sal","quantidade":20,"unidade":"g","custo_unitario":0.02},{"nome":"Cacau em pó","quantidade":30,"unidade":"g","custo_unitario":0.015}]'::jsonb),
+
+  ('b0000001-0000-0000-0000-000000000002','a1b2c3d4-0000-0000-0000-000000000001','a1b2c3d4-0000-0000-0000-000000000001',
+   'Trufa de Ferrero Rocher',
+   'Trufa recheada com pasta de avelã e wafer crocante, coberta com chocolate ao leite e avelãs.',
+   5.50, 5.50, 1.80, 20.50, 'trufa', TRUE,
+   '[{"nome":"Pasta de avelã","quantidade":150,"unidade":"g","custo_unitario":0.06},{"nome":"Chocolate ao leite","quantidade":200,"unidade":"g","custo_unitario":0.05},{"nome":"Wafer triturado","quantidade":50,"unidade":"g","custo_unitario":0.03},{"nome":"Avelãs inteiras","quantidade":30,"unidade":"unid","custo_unitario":0.15}]'::jsonb),
+
+  ('b0000001-0000-0000-0000-000000000003','a1b2c3d4-0000-0000-0000-000000000001','a1b2c3d4-0000-0000-0000-000000000001',
+   'Bombom Recheado de Morango',
+   'Bombom de chocolate branco com recheio cremoso de morango natural.',
+   3.80, 3.80, 0.95, 14.50, 'bombom', TRUE,
+   '[{"nome":"Chocolate branco","quantidade":200,"unidade":"g","custo_unitario":0.06},{"nome":"Morango fresco","quantidade":100,"unidade":"g","custo_unitario":0.02},{"nome":"Creme de leite","quantidade":50,"unidade":"ml","custo_unitario":0.01},{"nome":"Açúcar de confeiteiro","quantidade":20,"unidade":"g","custo_unitario":0.005}]'::jsonb),
+
+  ('b0000001-0000-0000-0000-000000000004','a1b2c3d4-0000-0000-0000-000000000001','a1b2c3d4-0000-0000-0000-000000000001',
+   'Kit Presente 9 Trufas',
+   'Caixa elegante com 9 trufas sortidas: 3 chocolate belga, 3 Ferrero e 3 sortidas.',
+   45.00, 45.00, 14.00, 14.00, 'kit', TRUE, '[]'::jsonb),
+
+  ('b0000001-0000-0000-0000-000000000005','a1b2c3d4-0000-0000-0000-000000000001','a1b2c3d4-0000-0000-0000-000000000001',
+   'Trufa de Maracujá',
+   'Trufa de chocolate branco com recheio azedo-doce de maracujá fresco.',
+   4.80, 4.80, 1.30, 14.00, 'trufa', TRUE,
+   '[{"nome":"Chocolate branco","quantidade":200,"unidade":"g","custo_unitario":0.06},{"nome":"Polpa de maracujá","quantidade":80,"unidade":"ml","custo_unitario":0.025},{"nome":"Creme de leite","quantidade":60,"unidade":"ml","custo_unitario":0.01}]'::jsonb),
+
+  ('b0000001-0000-0000-0000-000000000006','a1b2c3d4-0000-0000-0000-000000000001','a1b2c3d4-0000-0000-0000-000000000001',
+   'Bombom de Caramelo Salgado',
+   'Bombom de chocolate ao leite com recheio de caramelo artesanal e flor de sal.',
+   4.20, 4.20, 1.10, 11.60, 'bombom', TRUE,
+   '[{"nome":"Chocolate ao leite","quantidade":200,"unidade":"g","custo_unitario":0.05},{"nome":"Açúcar cristal","quantidade":100,"unidade":"g","custo_unitario":0.005},{"nome":"Creme de leite","quantidade":100,"unidade":"ml","custo_unitario":0.01},{"nome":"Flor de sal","quantidade":2,"unidade":"g","custo_unitario":0.05}]'::jsonb),
+
   -- Produto inativo (arquivado)
-  (
-    'b0000001-0000-0000-0000-000000000007',
-    'a1b2c3d4-0000-0000-0000-000000000001',
-    'Trufa de Menta (Descontinuada)',
-    'Trufa de chocolate amargo com recheio de menta. Fora de linha.',
-    4.00,
-    1.00,
-    'trufa',
-    FALSE,
-    '[]'::jsonb
-  )
+  ('b0000001-0000-0000-0000-000000000007','a1b2c3d4-0000-0000-0000-000000000001','a1b2c3d4-0000-0000-0000-000000000001',
+   'Trufa de Menta (Descontinuada)',
+   'Trufa de chocolate amargo com recheio de menta. Fora de linha.',
+   4.00, 4.00, 1.00, 1.00, 'trufa', FALSE, '[]'::jsonb)
+
 ON CONFLICT (confeiteiro_id, nome) DO UPDATE SET
-  descricao = EXCLUDED.descricao,
-  preco     = EXCLUDED.preco,
-  custo     = EXCLUDED.custo;
+  confeitaria_id  = EXCLUDED.confeitaria_id,
+  descricao       = EXCLUDED.descricao,
+  preco           = EXCLUDED.preco,
+  preco_venda     = EXCLUDED.preco_venda,
+  custo           = EXCLUDED.custo,
+  custo_calculado = EXCLUDED.custo_calculado;
+
+-- ┌──────────────────────────────────────────────────────────┐
+-- │  PRODUTOS_INGREDIENTES — Receitas da Maria               │
+-- └──────────────────────────────────────────────────────────┘
+
+INSERT INTO public.produtos_ingredientes (produto_id, ingrediente_id, quantidade)
+VALUES
+  -- Trufa de Chocolate Belga (rende ~15 unid, custo por lote)
+  ('b0000001-0000-0000-0000-000000000001', 'e0000001-0000-0000-0000-000000000001', 200),  -- Chocolate belga 70% 200g
+  ('b0000001-0000-0000-0000-000000000001', 'e0000001-0000-0000-0000-000000000004', 100),  -- Creme de leite 100ml
+  ('b0000001-0000-0000-0000-000000000001', 'e0000001-0000-0000-0000-000000000005',  20),  -- Manteiga sem sal 20g
+  ('b0000001-0000-0000-0000-000000000001', 'e0000001-0000-0000-0000-000000000006',  30),  -- Cacau em pó 30g
+
+  -- Trufa de Ferrero Rocher
+  ('b0000001-0000-0000-0000-000000000002', 'e0000001-0000-0000-0000-000000000007', 150),  -- Pasta de avelã 150g
+  ('b0000001-0000-0000-0000-000000000002', 'e0000001-0000-0000-0000-000000000002', 200),  -- Chocolate ao leite 200g
+  ('b0000001-0000-0000-0000-000000000002', 'e0000001-0000-0000-0000-000000000008',  50),  -- Wafer triturado 50g
+  ('b0000001-0000-0000-0000-000000000002', 'e0000001-0000-0000-0000-000000000009',  30),  -- Avelãs inteiras 30un
+
+  -- Bombom Recheado de Morango
+  ('b0000001-0000-0000-0000-000000000003', 'e0000001-0000-0000-0000-000000000003', 200),  -- Chocolate branco 200g
+  ('b0000001-0000-0000-0000-000000000003', 'e0000001-0000-0000-0000-000000000010', 100),  -- Morango fresco 100g
+  ('b0000001-0000-0000-0000-000000000003', 'e0000001-0000-0000-0000-000000000004',  50),  -- Creme de leite 50ml
+  ('b0000001-0000-0000-0000-000000000003', 'e0000001-0000-0000-0000-000000000011',  20),  -- Açúcar de confeiteiro 20g
+
+  -- Trufa de Maracujá
+  ('b0000001-0000-0000-0000-000000000005', 'e0000001-0000-0000-0000-000000000003', 200),  -- Chocolate branco 200g
+  ('b0000001-0000-0000-0000-000000000005', 'e0000001-0000-0000-0000-000000000012',  80),  -- Polpa de maracujá 80ml
+  ('b0000001-0000-0000-0000-000000000005', 'e0000001-0000-0000-0000-000000000004',  60),  -- Creme de leite 60ml
+
+  -- Bombom de Caramelo Salgado
+  ('b0000001-0000-0000-0000-000000000006', 'e0000001-0000-0000-0000-000000000002', 200),  -- Chocolate ao leite 200g
+  ('b0000001-0000-0000-0000-000000000006', 'e0000001-0000-0000-0000-000000000013', 100),  -- Açúcar cristal 100g
+  ('b0000001-0000-0000-0000-000000000006', 'e0000001-0000-0000-0000-000000000004', 100),  -- Creme de leite 100ml
+  ('b0000001-0000-0000-0000-000000000006', 'e0000001-0000-0000-0000-000000000014',   2)   -- Flor de sal 2g
+
+ON CONFLICT (produto_id, ingrediente_id) DO UPDATE SET quantidade = EXCLUDED.quantidade;
 
 -- ┌──────────────────────────────────────────────────────────┐
 -- │  PEDIDOS — Maria                                         │
 -- └──────────────────────────────────────────────────────────┘
 
-INSERT INTO public.pedidos (id, confeiteiro_id, cliente_nome, cliente_telefone, status, canal, data_entrega, valor_total, observacoes, created_at)
+-- id, confeiteiro_id, confeitaria_id, cliente_id, cliente_nome, cliente_telefone, status, canal, data_entrega, valor_total, observacoes, created_at
+INSERT INTO public.pedidos (id, confeiteiro_id, confeitaria_id, cliente_id, cliente_nome, cliente_telefone, status, canal, data_entrega, valor_total, observacoes, created_at)
 VALUES
   -- Pedido 1: Entregue (histórico)
-  (
-    'c0000001-0000-0000-0000-000000000001',
-    'a1b2c3d4-0000-0000-0000-000000000001',
-    'Fernanda Lima',
-    '(11) 98765-4321',
-    'entregue',
-    'whatsapp',
-    NOW() - INTERVAL '7 days',
-    54.00,
-    'Presentear a sogra. Quer laço dourado na caixa.',
-    NOW() - INTERVAL '10 days'
-  ),
+  ('c0000001-0000-0000-0000-000000000001',
+   'a1b2c3d4-0000-0000-0000-000000000001', 'a1b2c3d4-0000-0000-0000-000000000001',
+   'd0000001-0000-0000-0000-000000000001',
+   'Fernanda Lima', '(11) 98765-4321',
+   'entregue', 'whatsapp', NOW() - INTERVAL '7 days', 54.00,
+   'Presentear a sogra. Quer laço dourado na caixa.', NOW() - INTERVAL '10 days'),
+
   -- Pedido 2: Em produção
-  (
-    'c0000001-0000-0000-0000-000000000002',
-    'a1b2c3d4-0000-0000-0000-000000000001',
-    'Carlos Eduardo',
-    '(11) 97654-3210',
-    'producao',
-    'instagram',
-    NOW() + INTERVAL '2 days',
-    90.00,
-    'Festa de 15 anos. Tema: rosa e dourado. Kit com nome da aniversariante.',
-    NOW() - INTERVAL '3 days'
-  ),
+  ('c0000001-0000-0000-0000-000000000002',
+   'a1b2c3d4-0000-0000-0000-000000000001', 'a1b2c3d4-0000-0000-0000-000000000001',
+   'd0000001-0000-0000-0000-000000000002',
+   'Carlos Eduardo', '(11) 97654-3210',
+   'producao', 'instagram', NOW() + INTERVAL '2 days', 90.00,
+   'Festa de 15 anos. Tema: rosa e dourado. Kit com nome da aniversariante.', NOW() - INTERVAL '3 days'),
+
   -- Pedido 3: Confirmado (próximo)
-  (
-    'c0000001-0000-0000-0000-000000000003',
-    'a1b2c3d4-0000-0000-0000-000000000001',
-    'Beatriz Oliveira',
-    '(11) 96543-2109',
-    'confirmado',
-    'whatsapp',
-    NOW() + INTERVAL '5 days',
-    135.00,
-    'Casamento. Preferência por sabores clássicos. Evitar amendoim (alergia).',
-    NOW() - INTERVAL '1 day'
-  ),
-  -- Pedido 4: Novo (recém chegou)
-  (
-    'c0000001-0000-0000-0000-000000000004',
-    'a1b2c3d4-0000-0000-0000-000000000001',
-    'Rafael Santos',
-    NULL,
-    'novo',
-    'presencial',
-    NOW() + INTERVAL '14 days',
-    45.00,
-    NULL,
-    NOW()
-  ),
+  ('c0000001-0000-0000-0000-000000000003',
+   'a1b2c3d4-0000-0000-0000-000000000001', 'a1b2c3d4-0000-0000-0000-000000000001',
+   'd0000001-0000-0000-0000-000000000003',
+   'Beatriz Oliveira', '(11) 96543-2109',
+   'confirmado', 'whatsapp', NOW() + INTERVAL '5 days', 135.00,
+   'Casamento. Preferência por sabores clássicos. Evitar amendoim (alergia).', NOW() - INTERVAL '1 day'),
+
+  -- Pedido 4: Novo (recém chegou — sem cliente cadastrado ainda)
+  ('c0000001-0000-0000-0000-000000000004',
+   'a1b2c3d4-0000-0000-0000-000000000001', 'a1b2c3d4-0000-0000-0000-000000000001',
+   NULL,
+   'Rafael Santos', NULL,
+   'novo', 'presencial', NOW() + INTERVAL '14 days', 45.00,
+   NULL, NOW()),
+
   -- Pedido 5: Pronto para retirada
-  (
-    'c0000001-0000-0000-0000-000000000005',
-    'a1b2c3d4-0000-0000-0000-000000000001',
-    'Juliana Costa',
-    '(11) 95432-1098',
-    'pronto',
-    'instagram',
-    NOW() + INTERVAL '1 day',
-    54.00,
-    'Retirada no ateliê. Confirmar horário.',
-    NOW() - INTERVAL '5 days'
-  ),
+  ('c0000001-0000-0000-0000-000000000005',
+   'a1b2c3d4-0000-0000-0000-000000000001', 'a1b2c3d4-0000-0000-0000-000000000001',
+   'd0000001-0000-0000-0000-000000000004',
+   'Juliana Costa', '(11) 95432-1098',
+   'pronto', 'instagram', NOW() + INTERVAL '1 day', 54.00,
+   'Retirada no ateliê. Confirmar horário.', NOW() - INTERVAL '5 days'),
+
   -- Pedido 6: Cancelado
-  (
-    'c0000001-0000-0000-0000-000000000006',
-    'a1b2c3d4-0000-0000-0000-000000000001',
-    'Pedro Alves',
-    '(11) 94321-0987',
-    'cancelado',
-    'whatsapp',
-    NOW() - INTERVAL '2 days',
-    45.00,
-    'Cliente cancelou — mudança de data do evento.',
-    NOW() - INTERVAL '8 days'
-  )
+  ('c0000001-0000-0000-0000-000000000006',
+   'a1b2c3d4-0000-0000-0000-000000000001', 'a1b2c3d4-0000-0000-0000-000000000001',
+   NULL,
+   'Pedro Alves', '(11) 94321-0987',
+   'cancelado', 'whatsapp', NOW() - INTERVAL '2 days', 45.00,
+   'Cliente cancelou — mudança de data do evento.', NOW() - INTERVAL '8 days')
+
 ON CONFLICT (id) DO NOTHING;
 
 -- ┌──────────────────────────────────────────────────────────┐
@@ -536,21 +601,31 @@ ON CONFLICT (confeiteiro_id, mes, ano) DO UPDATE SET
 -- │  PRODUTOS da Ana (segundo tenant — isolamento de dados)  │
 -- └──────────────────────────────────────────────────────────┘
 
-INSERT INTO public.produtos (confeiteiro_id, nome, preco, custo, categoria, ingredientes)
+INSERT INTO public.produtos (confeiteiro_id, confeitaria_id, nome, preco, preco_venda, custo, custo_calculado, categoria, ingredientes)
 VALUES
   (
     'a1b2c3d4-0000-0000-0000-000000000002',
+    'a1b2c3d4-0000-0000-0000-000000000002',
     'Brigadeiro Gourmet',
-    3.50, 0.80, 'bombom',
+    3.50, 3.50, 0.80, 5.93, 'bombom',
     '[{"nome":"Leite condensado","quantidade":395,"unidade":"g","custo_unitario":0.015}]'::jsonb
   ),
   (
     'a1b2c3d4-0000-0000-0000-000000000002',
+    'a1b2c3d4-0000-0000-0000-000000000002',
     'Kit Festa 20 Brigadeiros',
-    65.00, 18.00, 'kit',
+    65.00, 65.00, 18.00, 18.00, 'kit',
     '[]'::jsonb
   )
 ON CONFLICT (confeiteiro_id, nome) DO NOTHING;
+
+-- Ingrediente do catálogo da Ana
+INSERT INTO public.ingredientes_catalogo (confeitaria_id, nome, unidade, preco_atual)
+VALUES
+  ('a1b2c3d4-0000-0000-0000-000000000002', 'Leite condensado', 'g', 0.0150),
+  ('a1b2c3d4-0000-0000-0000-000000000002', 'Chocolate em pó',  'g', 0.0120),
+  ('a1b2c3d4-0000-0000-0000-000000000002', 'Manteiga',         'g', 0.0180)
+ON CONFLICT (confeitaria_id, nome) DO NOTHING;
 
 COMMIT;
 
