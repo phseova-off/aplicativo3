@@ -7,31 +7,33 @@ import { Button } from '@/shared/components/ui/Button'
 import { Card, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { usePlano } from '@/features/planos/hooks/usePlano'
 import { PLANO_CONFIG } from '@/features/planos/lib/planFeatures'
-import { useConfeiteiro } from '@/features/auth/hooks/useConfeiteiro'
+import { useConfeitaria } from '@/features/auth/hooks/useConfeitaria'
 import { formatCurrency } from '@/shared/lib/utils'
+import { cn } from '@/shared/lib/utils'
 import type { PlanoTipo } from '@/server/db/types'
 
-// ─── Usage stats ──────────────────────────────────────────────
+// ─── Usage bar ────────────────────────────────────────────────────────────────
 
 function UsageBar({ label, used, max }: { label: string; used: number; max: number | null }) {
-  const pct = max === null ? 0 : Math.min((used / max) * 100, 100)
   const unlimited = max === null
+  const pct = unlimited ? 0 : Math.min((used / Math.max(max, 1)) * 100, 100)
   const warning = !unlimited && pct >= 80
 
   return (
     <div className="space-y-1.5">
       <div className="flex justify-between text-sm">
         <span className="text-gray-700">{label}</span>
-        <span className={`font-medium ${warning ? 'text-amber-600' : 'text-gray-900'}`}>
+        <span className={cn('font-medium', warning ? 'text-amber-600' : 'text-gray-900')}>
           {unlimited ? `${used} / ∞` : `${used} / ${max}`}
         </span>
       </div>
       {!unlimited && (
         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${
+            className={cn(
+              'h-full rounded-full transition-all',
               pct >= 100 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-400' : 'bg-primary-500'
-            }`}
+            )}
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -39,22 +41,27 @@ function UsageBar({ label, used, max }: { label: string; used: number; max: numb
       {unlimited && (
         <p className="text-xs text-green-600 font-medium">Ilimitado no seu plano</p>
       )}
+      {warning && !unlimited && (
+        <p className="text-xs text-amber-600">
+          {pct >= 100 ? 'Limite atingido.' : `${pct.toFixed(0)}% usado — considere fazer upgrade.`}
+        </p>
+      )}
     </div>
   )
 }
 
-// ─── Plan card ────────────────────────────────────────────────
+// ─── Plan card ────────────────────────────────────────────────────────────────
 
 const PLAN_ICONS: Record<PlanoTipo, typeof Sparkles> = {
-  free:    Sparkles,
+  free: Sparkles,
   starter: Zap,
-  pro:     Crown,
+  pro: Crown,
 }
 
 const PLAN_COLORS: Record<PlanoTipo, { badge: 'default' | 'info' | 'purple'; ring: string; icon: string }> = {
-  free:    { badge: 'default', ring: 'ring-gray-200',   icon: 'text-gray-500'  },
+  free:    { badge: 'default', ring: 'ring-gray-200',    icon: 'text-gray-500'    },
   starter: { badge: 'info',    ring: 'ring-primary-300', icon: 'text-primary-600' },
-  pro:     { badge: 'purple',  ring: 'ring-purple-300',  icon: 'text-purple-600' },
+  pro:     { badge: 'purple',  ring: 'ring-purple-300',  icon: 'text-purple-600'  },
 }
 
 const PLAN_FEATURES: Record<PlanoTipo, string[]> = {
@@ -82,7 +89,7 @@ const PLAN_FEATURES: Record<PlanoTipo, string[]> = {
 interface PlanCardProps {
   planoKey: PlanoTipo
   planoAtual: PlanoTipo
-  onUpgrade: (plano: PlanoTipo) => void
+  onUpgrade: (plano: PlanoTipo | 'portal') => void
   loading: boolean
 }
 
@@ -98,16 +105,17 @@ function PlanCard({ planoKey, planoAtual, onUpgrade, loading }: PlanCardProps) {
 
   return (
     <div
-      className={`rounded-xl border-2 p-5 transition-all ${
+      className={cn(
+        'rounded-xl border-2 p-5 transition-all',
         isAtual
           ? `ring-2 ${colors.ring} border-transparent`
           : 'border-gray-200 hover:border-gray-300'
-      }`}
+      )}
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-xl bg-gray-50`}>
-            <Icon className={`w-5 h-5 ${colors.icon}`} />
+          <div className="p-2 rounded-xl bg-gray-50">
+            <Icon className={cn('w-5 h-5', colors.icon)} />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -129,27 +137,19 @@ function PlanCard({ planoKey, planoAtual, onUpgrade, loading }: PlanCardProps) {
       </ul>
 
       {canUpgrade ? (
-        <Button
-          className="w-full"
-          variant="primary"
-          onClick={() => onUpgrade(planoKey)}
-          loading={loading}
-        >
+        <Button className="w-full" variant="primary" onClick={() => onUpgrade(planoKey)} loading={loading}>
           Assinar {cfg.label}
         </Button>
       ) : isDowngrade ? (
         <p className="text-xs text-gray-400 text-center">
           Para fazer downgrade, acesse o{' '}
-          <button
-            className="underline text-primary-600"
-            onClick={() => onUpgrade('portal' as PlanoTipo)}
-          >
+          <button className="underline text-primary-600" onClick={() => onUpgrade('portal')}>
             portal de faturamento
           </button>
           .
         </p>
       ) : isAtual && planoKey !== 'free' ? (
-        <Button variant="outline" className="w-full" onClick={() => onUpgrade('portal' as PlanoTipo)}>
+        <Button variant="outline" className="w-full" onClick={() => onUpgrade('portal')}>
           <ExternalLink className="w-4 h-4" />
           Gerenciar assinatura
         </Button>
@@ -158,21 +158,23 @@ function PlanCard({ planoKey, planoAtual, onUpgrade, loading }: PlanCardProps) {
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PlanoPage() {
-  const { plano, config, loading: planoLoading } = usePlano()
-  const { confeiteiro } = useConfeiteiro()
+  const { plano, config } = usePlano()
+  const { confeitaria } = useConfeitaria()
   const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null)
 
-  // Mock usage — in production fetch from API
-  const pedidosMes = 0
+  // Real usage from confeitaria counters
+  const pedidosMes = confeitaria?.pedidos_mes_atual ?? 0
+  const cronogramasMes = confeitaria?.cronogramas_ia_mes_atual ?? 0
+  const maxPedidos = config.maxPedidosMes === Infinity ? null : config.maxPedidosMes
+  const maxCronogramas = config.cronogramasIAMes === 0 ? 0 : config.cronogramasIAMes
 
   async function handleUpgrade(planoKey: PlanoTipo | 'portal') {
     setUpgradeLoading(planoKey)
 
     if (planoKey === 'portal') {
-      // Redirect to Stripe billing portal
       const res = await fetch('/api/stripe/portal', { method: 'POST' })
       if (res.ok) {
         const { url } = await res.json()
@@ -185,7 +187,7 @@ export default function PlanoPage() {
     const res = await fetch('/api/stripe/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planKey: planoKey }),
+      body: JSON.stringify({ plano: planoKey }),
     })
 
     if (res.ok) {
@@ -202,26 +204,22 @@ export default function PlanoPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Plano e faturamento</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Gerencie sua assinatura e veja o uso do seu plano atual.
+          Gerencie sua assinatura e acompanhe o uso do plano atual.
         </p>
       </div>
 
-      {/* Current usage */}
+      {/* Usage this month */}
       <Card>
         <CardHeader>
           <CardTitle>Uso do mês atual</CardTitle>
           <Badge variant={PLAN_COLORS[plano].badge}>{config.label}</Badge>
         </CardHeader>
         <div className="space-y-4">
-          <UsageBar
-            label="Pedidos criados"
-            used={pedidosMes}
-            max={config.maxPedidosMes === Infinity ? null : config.maxPedidosMes}
-          />
+          <UsageBar label="Pedidos criados" used={pedidosMes} max={maxPedidos} />
           <UsageBar
             label="Cronogramas de IA"
-            used={0}
-            max={config.cronogramasIAMes === 0 ? 0 : config.cronogramasIAMes}
+            used={cronogramasMes}
+            max={maxCronogramas === 0 ? 0 : maxCronogramas}
           />
         </div>
       </Card>
@@ -242,7 +240,7 @@ export default function PlanoPage() {
         </div>
       </div>
 
-      {/* Billing info */}
+      {/* Billing */}
       {plano !== 'free' && (
         <Card>
           <CardHeader>

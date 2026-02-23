@@ -66,6 +66,20 @@ export interface Confeitaria {
   /** Primeiro dia do mês corrente dos contadores (YYYY-MM-DD) */
   mes_referencia: string
 
+  // ── Campos adicionados na migration 007 ──
+  /** Slug único para URL pública do cardápio (ex: "doceria-da-maria") */
+  slug: string | null
+  /** Se o onboarding de 5 passos foi concluído */
+  onboarding_completo: boolean
+  /** Área de entrega (texto livre) */
+  area_entrega: string | null
+  /** Prazo padrão de entrega em dias */
+  prazo_padrao_dias: number | null
+  /** Horários de atendimento (texto livre) */
+  horarios_atendimento: string | null
+  /** Se o cardápio público está ativo */
+  menu_publico_ativo: boolean
+
   created_at: string
   updated_at: string
 }
@@ -352,65 +366,97 @@ export interface Database {
     Tables: {
       // ── v2 ───────────────────────────────────────────────
       confeitarias: {
-        Row:    Confeitaria
-        Insert: ConfeitariaInsert
-        Update: ConfeitariaUpdate
+        Row:           Confeitaria
+        Insert:        ConfeitariaInsert
+        Update:        ConfeitariaUpdate
+        Relationships: []
       }
       confeitaria_membros: {
-        Row:    ConfeitariaMembro
-        Insert: ConfeitariaMembroInsert
-        Update: Pick<ConfeitariaMembro, 'role'>
+        Row:           ConfeitariaMembro
+        Insert:        ConfeitariaMembroInsert
+        Update:        Pick<ConfeitariaMembro, 'role'>
+        Relationships: []
       }
       clientes: {
-        Row:    Cliente
-        Insert: ClienteInsert
-        Update: ClienteUpdate
+        Row:           Cliente
+        Insert:        ClienteInsert
+        Update:        ClienteUpdate
+        Relationships: []
       }
       ingredientes_catalogo: {
-        Row:    IngredienteCatalogo
-        Insert: IngredienteCatalogoInsert
-        Update: IngredienteCatalogoUpdate
+        Row:           IngredienteCatalogo
+        Insert:        IngredienteCatalogoInsert
+        Update:        IngredienteCatalogoUpdate
+        Relationships: []
       }
       produtos_ingredientes: {
-        Row:    ProdutoIngrediente
-        Insert: ProdutoIngredienteInsert
-        Update: ProdutoIngredienteUpdate
+        Row:           ProdutoIngrediente
+        Insert:        ProdutoIngredienteInsert
+        Update:        ProdutoIngredienteUpdate
+        Relationships: []
+      }
+      // ── Idempotência Stripe (migration 007) ──────────────
+      stripe_events_processados: {
+        Row: {
+          stripe_event_id: string
+          tipo: string
+          payload_resumo: Json | null
+          processado_em: string
+        }
+        Insert: {
+          stripe_event_id: string
+          tipo: string
+          payload_resumo?: Json | null
+          processado_em?: string
+        }
+        Update: {
+          tipo?: string
+          payload_resumo?: Json | null
+        }
+        Relationships: []
       }
       // ── v1 (legado) ───────────────────────────────────────
       confeiteiros: {
-        Row:    Confeiteiro
-        Insert: ConfeteiroInsert
-        Update: ConfeteiroUpdate
+        Row:           Confeiteiro
+        Insert:        ConfeteiroInsert
+        Update:        ConfeteiroUpdate
+        Relationships: []
       }
       produtos: {
-        Row:    Produto
-        Insert: ProdutoInsert
-        Update: ProdutoUpdate
+        Row:           Produto
+        Insert:        ProdutoInsert
+        Update:        ProdutoUpdate
+        Relationships: []
       }
       pedidos: {
-        Row:    Pedido
-        Insert: PedidoInsert
-        Update: PedidoUpdate
+        Row:           Pedido
+        Insert:        PedidoInsert
+        Update:        PedidoUpdate
+        Relationships: []
       }
       itens_pedido: {
-        Row:    ItemPedido
-        Insert: ItemPedidoInsert
-        Update: Partial<Pick<ItemPedido, 'quantidade' | 'preco_unitario' | 'nome_produto'>>
+        Row:           ItemPedido
+        Insert:        ItemPedidoInsert
+        Update:        Partial<Pick<ItemPedido, 'quantidade' | 'preco_unitario' | 'nome_produto'>>
+        Relationships: []
       }
       producao_lotes: {
-        Row:    ProducaoLote
-        Insert: ProducaoLoteInsert
-        Update: ProducaoLoteUpdate
+        Row:           ProducaoLote
+        Insert:        ProducaoLoteInsert
+        Update:        ProducaoLoteUpdate
+        Relationships: []
       }
       transacoes: {
-        Row:    Transacao
-        Insert: TransacaoInsert
-        Update: TransacaoUpdate
+        Row:           Transacao
+        Insert:        TransacaoInsert
+        Update:        TransacaoUpdate
+        Relationships: []
       }
       cronogramas_marketing: {
-        Row:    CronogramaMarketing
-        Insert: CronogramaMarketingInsert
-        Update: CronogramaUpdate
+        Row:           CronogramaMarketing
+        Insert:        CronogramaMarketingInsert
+        Update:        CronogramaUpdate
+        Relationships: []
       }
     }
     Views: Record<string, never>

@@ -77,15 +77,31 @@ export async function middleware(request: NextRequest) {
     !isPublic(pathname) &&
     !pathname.startsWith('/api/')
   ) {
-    // Fetch onboarding flag — only once per request, lightweight query
-    const { data: profile } = await supabase
-      .from('confeiteiros')
+    // Prefer confeitarias.onboarding_completo (v2 schema).
+    // Falls back gracefully if the column doesn't exist yet.
+    const { data: confeitaria } = await supabase
+      .from('confeitarias')
       .select('onboarding_completo')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (profile && !profile.onboarding_completo) {
+    const done = confeitaria?.onboarding_completo ?? false
+
+    if (!done) {
       return NextResponse.redirect(new URL('/onboarding', request.url))
+    }
+  }
+
+  // ── Already onboarded + hits /onboarding → /dashboard ─────
+  if (user && pathname.startsWith('/onboarding')) {
+    const { data: confeitaria } = await supabase
+      .from('confeitarias')
+      .select('onboarding_completo')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (confeitaria?.onboarding_completo) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }
 

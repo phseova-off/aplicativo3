@@ -10,7 +10,7 @@ export default function OnboardingPage() {
         <div className="text-center mb-6">
           <span className="text-5xl block mb-3">🎂</span>
           <h1 className="text-2xl font-bold text-gray-900">Doceria Pro</h1>
-          <p className="text-gray-500 text-sm mt-1">Configure seu negócio em 4 passos</p>
+          <p className="text-gray-500 text-sm mt-1">Configure seu negócio em 5 passos</p>
         </div>
 
         <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">

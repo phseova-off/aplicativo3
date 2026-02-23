@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
@@ -13,10 +13,13 @@ import {
   Trash2,
   AlertTriangle,
   ChevronRight,
+  Link2,
+  Copy,
+  CheckCircle,
 } from 'lucide-react'
-import { onboardingStep1Schema, type OnboardingStep1 } from '@/features/auth/schemas/auth.schema'
+import { z } from 'zod'
 import { createSupabaseBrowserClient } from '@/server/db/client'
-import { useConfeiteiro } from '@/features/auth/hooks/useConfeiteiro'
+import { useConfeitaria } from '@/features/auth/hooks/useConfeitaria'
 import { usePlano } from '@/features/planos/hooks/usePlano'
 import { PLANO_CONFIG } from '@/features/planos/lib/planFeatures'
 import { Input } from '@/shared/components/ui/Input'
@@ -24,50 +27,77 @@ import { Button } from '@/shared/components/ui/Button'
 import { Card, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Badge } from '@/shared/components/ui/Badge'
 import { useRouter } from 'next/navigation'
+import { cn } from '@/shared/lib/utils'
 
-// ─── Perfil section ───────────────────────────────────────────
+// ─── Perfil & Slug section ────────────────────────────────────────────────────
+
+const perfilSchema = z.object({
+  nome: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres').max(100),
+  slug: z
+    .string()
+    .min(2, 'Slug deve ter no mínimo 2 caracteres')
+    .max(60)
+    .regex(/^[a-z0-9-]+$/, 'Só letras minúsculas, números e hífens'),
+  telefone: z.string().optional(),
+  cidade: z.string().optional(),
+})
+
+type PerfilValues = z.infer<typeof perfilSchema>
 
 function SecaoPerfil() {
-  const { confeiteiro, loading, refresh } = useConfeiteiro()
+  const { confeitaria, loading, refresh } = useConfeitaria()
+  const [slugCopied, setSlugCopied] = useState(false)
+
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting, isDirty },
-  } = useForm<OnboardingStep1>({
-    resolver: zodResolver(onboardingStep1Schema),
+  } = useForm<PerfilValues>({
+    resolver: zodResolver(perfilSchema),
     values: {
-      nome_negocio: confeiteiro?.nome ?? '',
-      telefone: confeiteiro?.telefone ?? '',
-      cidade: confeiteiro?.cidade ?? '',
+      nome: confeitaria?.nome ?? '',
+      slug: confeitaria?.slug ?? '',
+      telefone: confeitaria?.telefone ?? '',
+      cidade: confeitaria?.cidade ?? '',
     },
   })
 
-  async function onSubmit(values: OnboardingStep1) {
+  async function onSubmit(values: PerfilValues) {
     const supabase = createSupabaseBrowserClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
-      .from('confeiteiros')
+    const { error } = await supabase
+      .from('confeitarias')
       .update({
-        nome: values.nome_negocio,
-        telefone: values.telefone ?? null,
-        cidade: values.cidade ?? null,
+        nome: values.nome,
+        slug: values.slug,
+        telefone: values.telefone || null,
+        cidade: values.cidade || null,
       })
       .eq('id', user.id)
 
     if (error) {
+      if (error.code === '23505') {
+        toast.error('Esse endereço já está em uso. Escolha outro.')
+        return
+      }
       toast.error('Erro ao salvar. Tente novamente.')
       return
     }
 
     await refresh()
     reset(values)
-    toast.success('Perfil atualizado!')
+    toast.success('Dados atualizados!')
+  }
+
+  function handleCopySlug() {
+    const slug = confeitaria?.slug
+    if (!slug) return
+    navigator.clipboard.writeText(`https://doceriapro.com/menu/${slug}`)
+    setSlugCopied(true)
+    setTimeout(() => setSlugCopied(false), 2000)
   }
 
   if (loading) {
@@ -94,10 +124,45 @@ function SecaoPerfil() {
         <Input
           label="Nome do negócio"
           leftIcon={<Store className="w-4 h-4" />}
-          error={errors.nome_negocio?.message}
+          error={errors.nome?.message}
           required
-          {...register('nome_negocio')}
+          {...register('nome')}
         />
+
+        {/* Slug with prefix */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+            <Link2 className="w-3.5 h-3.5 text-gray-400" />
+            Endereço público (cardápio)
+          </label>
+          <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500">
+            <span className="bg-gray-50 border-r border-gray-300 px-2 py-2.5 text-xs text-gray-400 whitespace-nowrap select-none">
+              doceriapro.com/menu/
+            </span>
+            <input
+              {...register('slug')}
+              className={cn(
+                'flex-1 h-10 px-2.5 text-sm bg-white text-gray-900 focus:outline-none',
+                errors.slug && 'bg-red-50'
+              )}
+            />
+          </div>
+          {errors.slug && <p className="text-xs text-red-600">{errors.slug.message}</p>}
+          {confeitaria?.slug && (
+            <button
+              type="button"
+              onClick={handleCopySlug}
+              className="flex items-center gap-1.5 text-xs text-primary-600 hover:text-primary-700 w-fit"
+            >
+              {slugCopied ? (
+                <><CheckCircle className="w-3 h-3" /> Link copiado!</>
+              ) : (
+                <><Copy className="w-3 h-3" /> Copiar link do cardápio</>
+              )}
+            </button>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="WhatsApp"
@@ -113,6 +178,7 @@ function SecaoPerfil() {
             {...register('cidade')}
           />
         </div>
+
         <div className="flex justify-end">
           <Button type="submit" loading={isSubmitting} disabled={!isDirty}>
             Salvar alterações
@@ -123,16 +189,22 @@ function SecaoPerfil() {
   )
 }
 
-// ─── Plano summary section ────────────────────────────────────
+// ─── Plano summary section ────────────────────────────────────────────────────
 
 function SecaoPlano() {
   const { plano, config } = usePlano()
+  const { confeitaria, pedidosPct, cronogramasPct } = useConfeitaria()
 
   const variantByPlan: Record<string, 'default' | 'purple' | 'info'> = {
     free: 'default',
     starter: 'info',
     pro: 'purple',
   }
+
+  const pedidosMes = confeitaria?.pedidos_mes_atual ?? 0
+  const cronogramasMes = confeitaria?.cronogramas_ia_mes_atual ?? 0
+  const maxPedidos = config.maxPedidosMes === Infinity ? null : config.maxPedidosMes
+  const maxCronogramas = config.cronogramasIAMes
 
   return (
     <Card>
@@ -144,23 +216,56 @@ function SecaoPlano() {
         <Badge variant={variantByPlan[plano] ?? 'default'}>{config.label}</Badge>
       </CardHeader>
 
-      <div className="flex items-center justify-between py-2">
-        <div>
-          <p className="text-sm text-gray-700">
-            {config.preco !== null
-              ? `${config.precoLabel} · Renova mensalmente`
-              : 'Grátis para sempre'}
-          </p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {config.maxPedidosMes === Infinity
-              ? 'Pedidos ilimitados'
-              : `Até ${config.maxPedidosMes} pedidos/mês`}
-            {' · '}
-            {config.cronogramasIAMes > 0
-              ? `${config.cronogramasIAMes} cronograma${config.cronogramasIAMes > 1 ? 's' : ''} de IA/mês`
-              : 'Sem IA de marketing'}
-          </p>
+      {/* Usage bars */}
+      <div className="space-y-3 mb-4">
+        <div className="space-y-1">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Pedidos este mês</span>
+            <span className={cn('font-medium', pedidosPct >= 80 ? 'text-amber-600' : 'text-gray-900')}>
+              {pedidosMes} / {maxPedidos === null ? '∞' : maxPedidos}
+            </span>
+          </div>
+          {maxPedidos !== null && (
+            <div className="h-1.5 bg-gray-100 rounded-full">
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all',
+                  pedidosPct >= 100 ? 'bg-red-500' : pedidosPct >= 80 ? 'bg-amber-400' : 'bg-primary-500'
+                )}
+                style={{ width: `${pedidosPct}%` }}
+              />
+            </div>
+          )}
+          {maxPedidos === null && (
+            <p className="text-xs text-green-600 font-medium">Ilimitado no seu plano</p>
+          )}
         </div>
+
+        {maxCronogramas > 0 && (
+          <div className="space-y-1">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Cronogramas IA este mês</span>
+              <span className={cn('font-medium', cronogramasPct >= 80 ? 'text-amber-600' : 'text-gray-900')}>
+                {cronogramasMes} / {maxCronogramas}
+              </span>
+            </div>
+            <div className="h-1.5 bg-gray-100 rounded-full">
+              <div
+                className={cn(
+                  'h-full rounded-full transition-all',
+                  cronogramasPct >= 100 ? 'bg-red-500' : cronogramasPct >= 80 ? 'bg-amber-400' : 'bg-primary-500'
+                )}
+                style={{ width: `${cronogramasPct}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+        <p className="text-sm text-gray-500">
+          {config.preco !== null ? `${config.precoLabel} · Renova mensalmente` : 'Grátis para sempre'}
+        </p>
         <Link
           href="/configuracoes/plano"
           className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 font-medium"
@@ -170,11 +275,14 @@ function SecaoPlano() {
         </Link>
       </div>
 
-      {plano === 'free' && (
+      {pedidosPct >= 80 && maxPedidos !== null && (
         <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
           <p className="text-xs text-amber-700">
-            <strong>Plano Free:</strong> você tem acesso a até 10 pedidos/mês. Faça upgrade para
-            desbloquear pedidos ilimitados e geração de cronogramas com IA.
+            <strong>Atenção:</strong> você usou {pedidosPct.toFixed(0)}% do limite de pedidos do mês.{' '}
+            <Link href="/configuracoes/plano" className="underline font-medium">
+              Faça upgrade
+            </Link>{' '}
+            para continuar recebendo pedidos sem interrupções.
           </p>
         </div>
       )}
@@ -182,7 +290,7 @@ function SecaoPlano() {
   )
 }
 
-// ─── Danger zone ──────────────────────────────────────────────
+// ─── Danger zone ──────────────────────────────────────────────────────────────
 
 function SecaoContaDanger() {
   const router = useRouter()
@@ -194,18 +302,17 @@ function SecaoContaDanger() {
     if (confirmText !== 'DELETAR') return
     setDeleting(true)
 
-    const supabase = createSupabaseBrowserClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const res = await fetch('/api/conta/deletar', { method: 'POST' })
 
-    if (!user) { router.push('/login'); return }
-
-    // Sign out first, then the service role would delete the user
-    // (in production, use a server action or API route with service role)
-    await supabase.auth.signOut()
-    toast.success('Conta encerrada. Sentiremos sua falta!')
-    router.push('/login')
+    if (res.ok) {
+      const supabase = createSupabaseBrowserClient()
+      await supabase.auth.signOut()
+      toast.success('Conta encerrada. Sentiremos sua falta!')
+      router.push('/login')
+    } else {
+      toast.error('Erro ao deletar conta. Entre em contato com o suporte.')
+      setDeleting(false)
+    }
   }
 
   return (
@@ -275,7 +382,7 @@ function SecaoContaDanger() {
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ConfiguracoesPage() {
   return (
