@@ -104,7 +104,7 @@ export function useDeletePedido() {
     mutationFn: deletePedido,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['pedidos'] })
-      toast.success('Pedido excluído.')
+      toast.success('Pedido cancelado.')
     },
     onError: (err: Error) => toast.error(err.message),
   })

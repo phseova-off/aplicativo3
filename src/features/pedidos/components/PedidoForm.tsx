@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useForm, useFieldArray, useWatch } from 'react-hook-form'
+import { useForm, useFieldArray, useWatch, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2 } from 'lucide-react'
 import { pedidoSchema, type PedidoFormValues } from '../schemas/pedido.schema'
@@ -10,6 +10,9 @@ import { Textarea } from '@/shared/components/ui/Textarea'
 import { Select } from '@/shared/components/ui/Select'
 import { Button } from '@/shared/components/ui/Button'
 import { CanalIcon } from './CanalIcon'
+import { ClienteAutocomplete } from './ClienteAutocomplete'
+import { ProdutoAutocomplete } from './ProdutoAutocomplete'
+import { formatCurrency } from '@/shared/lib/utils'
 import type { PedidoCanal } from '@/server/db/types'
 
 const statusOptions = [
@@ -39,6 +42,7 @@ export function PedidoForm({ defaultValues, onSubmit, submitLabel = 'Salvar pedi
     handleSubmit,
     control,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<PedidoFormValues>({
     resolver: zodResolver(pedidoSchema),
@@ -64,26 +68,27 @@ export function PedidoForm({ defaultValues, onSubmit, submitLabel = 'Salvar pedi
   }, [itens, setValue])
 
   const selectedCanal = useWatch({ control, name: 'canal' })
+  const nomeCliente = watch('cliente_nome') ?? ''
+  const telefoneCliente = watch('cliente_telefone') ?? ''
+  const valorTotal = watch('valor_total') ?? 0
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      {/* Client info */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Input
-          label="Nome do cliente"
-          placeholder="Maria Silva"
-          required
-          error={errors.cliente_nome?.message}
-          {...register('cliente_nome')}
-        />
-        <Input
-          label="WhatsApp / Telefone"
-          type="tel"
-          placeholder="(11) 99999-9999"
-          error={errors.cliente_telefone?.message}
-          {...register('cliente_telefone')}
-        />
-      </div>
+      {/* Client autocomplete */}
+      <Controller
+        name="cliente_nome"
+        control={control}
+        render={({ field }) => (
+          <ClienteAutocomplete
+            nomeValue={field.value ?? ''}
+            telefoneValue={telefoneCliente}
+            onNomeChange={(val) => setValue('cliente_nome', val)}
+            onTelefoneChange={(val) => setValue('cliente_telefone', val)}
+            nomeError={errors.cliente_nome?.message}
+            telefoneError={errors.cliente_telefone?.message}
+          />
+        )}
+      />
 
       {/* Canal + Data + Status */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -129,7 +134,7 @@ export function PedidoForm({ defaultValues, onSubmit, submitLabel = 'Salvar pedi
         />
       </div>
 
-      {/* Items */}
+      {/* Items with product autocomplete */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium text-gray-700">Itens do pedido</label>
@@ -147,20 +152,29 @@ export function PedidoForm({ defaultValues, onSubmit, submitLabel = 'Salvar pedi
         <div className="space-y-2">
           {fields.map((field, index) => (
             <div key={field.id} className="flex gap-2 items-start">
-              <div className="flex-1">
-                <Input
-                  placeholder="Nome do produto"
-                  error={errors.itens?.[index]?.nome_produto?.message}
-                  {...register(`itens.${index}.nome_produto`)}
-                />
-              </div>
+              {/* Product autocomplete replaces the plain text input */}
+              <Controller
+                name={`itens.${index}.nome_produto`}
+                control={control}
+                render={({ field: f }) => (
+                  <ProdutoAutocomplete
+                    value={f.value}
+                    onChange={(nome, preco, produtoId) => {
+                      setValue(`itens.${index}.nome_produto`, nome)
+                      if (preco !== undefined) setValue(`itens.${index}.preco_unitario`, preco)
+                      if (produtoId !== undefined) setValue(`itens.${index}.produto_id`, produtoId)
+                    }}
+                    error={errors.itens?.[index]?.nome_produto?.message}
+                  />
+                )}
+              />
               <div className="w-20">
                 <Input
                   type="number"
                   min="1"
                   placeholder="Qtd"
                   error={errors.itens?.[index]?.quantidade?.message}
-                  {...register(`itens.${index}.quantidade`)}
+                  {...register(`itens.${index}.quantidade`, { valueAsNumber: true })}
                 />
               </div>
               <div className="w-28">
@@ -170,7 +184,7 @@ export function PedidoForm({ defaultValues, onSubmit, submitLabel = 'Salvar pedi
                   min="0"
                   placeholder="R$ Preço"
                   error={errors.itens?.[index]?.preco_unitario?.message}
-                  {...register(`itens.${index}.preco_unitario`)}
+                  {...register(`itens.${index}.preco_unitario`, { valueAsNumber: true })}
                 />
               </div>
               <button
@@ -190,16 +204,12 @@ export function PedidoForm({ defaultValues, onSubmit, submitLabel = 'Salvar pedi
         </div>
 
         {fields.length > 0 && (
-          <div className="mt-3 flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg">
-            <span className="text-sm text-gray-600 font-medium">Total calculado</span>
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              className="w-32 text-right font-bold"
-              error={errors.valor_total?.message}
-              {...register('valor_total')}
-            />
+          <div className="mt-3 flex items-center justify-between px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-200">
+            <span className="text-sm text-gray-600 font-medium">Total</span>
+            <span className="text-base font-bold text-primary-700">
+              {formatCurrency(valorTotal)}
+            </span>
+            <input type="hidden" {...register('valor_total', { valueAsNumber: true })} />
           </div>
         )}
       </div>

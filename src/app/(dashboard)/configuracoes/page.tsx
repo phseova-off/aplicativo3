@@ -16,6 +16,10 @@ import {
   Link2,
   Copy,
   CheckCircle,
+  Globe,
+  Eye,
+  EyeOff,
+  ExternalLink,
 } from 'lucide-react'
 import { z } from 'zod'
 import { createSupabaseBrowserClient } from '@/server/db/client'
@@ -382,6 +386,162 @@ function SecaoContaDanger() {
   )
 }
 
+// ─── Cardápio Público section ─────────────────────────────────────────────────
+
+function SecaoCardapioPublico() {
+  const { confeitaria, loading, refresh } = useConfeitaria()
+  const [toggling, setToggling] = useState(false)
+  const [linkCopiado, setLinkCopiado] = useState(false)
+
+  const slug = confeitaria?.slug
+  const ativo = confeitaria?.menu_publico_ativo ?? false
+  const linkPublico = slug ? `${window?.location?.origin ?? 'https://doceriapro.com'}/menu/${slug}` : null
+
+  async function handleToggle() {
+    if (!confeitaria || !slug) return
+    setToggling(true)
+    const supabase = createSupabaseBrowserClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setToggling(false); return }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from('confeitarias')
+      .update({ menu_publico_ativo: !ativo })
+      .eq('id', user.id)
+
+    if (error) {
+      toast.error('Erro ao atualizar. Tente novamente.')
+    } else {
+      await refresh()
+      toast.success(!ativo ? 'Cardápio público ativado!' : 'Cardápio desativado.')
+    }
+    setToggling(false)
+  }
+
+  async function handleCopyLink() {
+    if (!linkPublico) return
+    await navigator.clipboard.writeText(linkPublico)
+    setLinkCopiado(true)
+    setTimeout(() => setLinkCopiado(false), 2000)
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <div className="animate-pulse space-y-3">
+          <div className="h-4 bg-gray-200 rounded w-40" />
+          <div className="h-10 bg-gray-200 rounded" />
+        </div>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Globe className="w-4 h-4 text-primary-600" />
+          Cardápio Público
+        </CardTitle>
+        <Badge variant={ativo ? 'success' : 'default'}>{ativo ? 'Ativo' : 'Inativo'}</Badge>
+      </CardHeader>
+
+      <p className="text-sm text-gray-500 mb-4">
+        Compartilhe um link único do seu cardápio para clientes pedirm via WhatsApp.
+        Este é o seu principal canal de crescimento orgânico.
+      </p>
+
+      {!slug ? (
+        <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+          <p className="text-xs text-amber-700">
+            Configure seu endereço público acima antes de ativar o cardápio.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {/* Link preview */}
+          <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <Globe className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <span className="text-sm text-gray-600 flex-1 truncate font-mono text-xs">
+              /menu/{slug}
+            </span>
+            <button
+              onClick={handleCopyLink}
+              className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 flex-shrink-0"
+            >
+              {linkCopiado ? (
+                <><CheckCircle className="w-3.5 h-3.5 text-green-500" /> Copiado!</>
+              ) : (
+                <><Copy className="w-3.5 h-3.5" /> Copiar</>
+              )}
+            </button>
+            {ativo && linkPublico && (
+              <a
+                href={linkPublico}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-primary-600 transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
+
+          {/* Toggle */}
+          <div className="flex items-center justify-between gap-4 p-3 bg-white rounded-lg border border-gray-200">
+            <div className="flex items-center gap-2">
+              {ativo ? (
+                <Eye className="w-4 h-4 text-green-500" />
+              ) : (
+                <EyeOff className="w-4 h-4 text-gray-400" />
+              )}
+              <div>
+                <p className="text-sm font-medium text-gray-900">
+                  {ativo ? 'Cardápio visível ao público' : 'Cardápio oculto'}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {ativo
+                    ? 'Qualquer pessoa com o link pode ver seus produtos'
+                    : 'O link do cardápio não está acessível ainda'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleToggle}
+              disabled={toggling}
+              className={cn(
+                'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent',
+                'transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+                toggling && 'opacity-60 cursor-not-allowed',
+                ativo ? 'bg-primary-600' : 'bg-gray-200'
+              )}
+              role="switch"
+              aria-checked={ativo}
+            >
+              <span
+                className={cn(
+                  'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                  ativo ? 'translate-x-5' : 'translate-x-0'
+                )}
+              />
+            </button>
+          </div>
+
+          {ativo && (
+            <div className="p-3 bg-primary-50 rounded-lg border border-primary-200">
+              <p className="text-xs text-primary-700">
+                <strong>Dica:</strong> Compartilhe o link no seu WhatsApp, bio do Instagram e grupos de clientes.
+                Cada cliente que abre o cardápio pode indicar para outras pessoas — é o seu loop de crescimento!
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ConfiguracoesPage() {
@@ -393,6 +553,7 @@ export default function ConfiguracoesPage() {
       </div>
 
       <SecaoPerfil />
+      <SecaoCardapioPublico />
       <SecaoPlano />
       <SecaoContaDanger />
     </div>

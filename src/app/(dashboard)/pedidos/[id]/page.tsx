@@ -2,24 +2,29 @@
 
 import { use, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
   ArrowLeft,
-  Trash2,
+  XCircle,
   CheckCircle2,
   Circle,
   Zap,
   Clock,
+  History,
+  ExternalLink,
 } from 'lucide-react'
 import { Button } from '@/shared/components/ui/Button'
 import { Card, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Select } from '@/shared/components/ui/Select'
 import { LoadingSpinner } from '@/shared/components/ui/LoadingSpinner'
+import { Badge } from '@/shared/components/ui/Badge'
 import { PedidoStatusBadge } from '@/features/pedidos/components/PedidoStatusBadge'
 import { CanalIcon } from '@/features/pedidos/components/CanalIcon'
-import { usePedido, useUpdatePedido, useDeletePedido } from '@/features/pedidos/hooks/usePedidos'
+import { usePedido, useUpdatePedido, useDeletePedido, usePedidos } from '@/features/pedidos/hooks/usePedidos'
 import {
   PEDIDO_STATUS_ORDER,
   PEDIDO_STATUS_LABELS,
+  PEDIDO_STATUS_VARIANTS,
   type PedidoStatus,
 } from '@/features/pedidos/types/pedido.types'
 import { formatCurrency, formatDate, formatDateTime } from '@/shared/lib/utils'
@@ -119,6 +124,88 @@ function StatusTimeline({
   )
 }
 
+// ─── Client History ────────────────────────────────────────
+
+function HistoricoCliente({ clienteNome, pedidoAtualId }: { clienteNome: string; pedidoAtualId: string }) {
+  const { data: todos } = usePedidos({ search: clienteNome })
+
+  const outrosPedidos = (todos ?? [])
+    .filter((p) => p.id !== pedidoAtualId && p.status !== 'cancelado')
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+  const totalGasto = (todos ?? [])
+    .filter((p) => p.status !== 'cancelado' && p.id !== pedidoAtualId)
+    .reduce((sum, p) => sum + p.valor_total, 0)
+
+  if (outrosPedidos.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="w-4 h-4 text-primary-600" />
+            Histórico do cliente
+          </CardTitle>
+        </CardHeader>
+        <p className="text-sm text-gray-400">Primeiro pedido deste cliente.</p>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <History className="w-4 h-4 text-primary-600" />
+          Histórico do cliente
+        </CardTitle>
+      </CardHeader>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-gray-50 rounded-lg p-2.5 text-center">
+          <p className="text-lg font-bold text-gray-900">{outrosPedidos.length}</p>
+          <p className="text-xs text-gray-500">outros pedidos</p>
+        </div>
+        <div className="bg-gray-50 rounded-lg p-2.5 text-center">
+          <p className="text-sm font-bold text-primary-700">{formatCurrency(totalGasto)}</p>
+          <p className="text-xs text-gray-500">total gasto</p>
+        </div>
+      </div>
+
+      {/* Last orders */}
+      <div className="space-y-2">
+        {outrosPedidos.slice(0, 4).map((p) => (
+          <Link
+            key={p.id}
+            href={`/pedidos/${p.id}`}
+            className="flex items-center justify-between gap-2 py-1.5 px-2 rounded-lg hover:bg-gray-50 transition-colors group"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <Badge variant={PEDIDO_STATUS_VARIANTS[p.status]} className="text-xs">
+                  {PEDIDO_STATUS_LABELS[p.status]}
+                </Badge>
+                {p.data_entrega && (
+                  <span className="text-xs text-gray-400">{formatDate(p.data_entrega)}</span>
+                )}
+              </div>
+              {p.itens_pedido && p.itens_pedido.length > 0 && (
+                <p className="text-xs text-gray-500 truncate mt-0.5">
+                  {p.itens_pedido.slice(0, 2).map((it) => `${it.quantidade}× ${it.nome_produto}`).join(', ')}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span className="text-xs font-semibold text-gray-700">{formatCurrency(p.valor_total)}</span>
+              <ExternalLink className="w-3 h-3 text-gray-300 group-hover:text-primary-500 transition-colors" />
+            </div>
+          </Link>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 // ─── Page ────────────────────────────────────────────────────
 
 export default function PedidoDetailPage({ params }: Props) {
@@ -166,8 +253,8 @@ export default function PedidoDetailPage({ params }: Props) {
     updatePedido({ id, data: { status: 'producao' } })
   }
 
-  function handleDelete() {
-    if (!confirm('Tem certeza que deseja excluir este pedido?')) return
+  function handleCancel() {
+    if (!confirm('Deseja cancelar este pedido? Ele não será removido do sistema.')) return
     deletePedido(id, { onSuccess: () => router.push('/pedidos') })
   }
 
@@ -194,15 +281,18 @@ export default function PedidoDetailPage({ params }: Props) {
           </div>
           <p className="text-xs text-gray-400 font-mono mt-0.5">#{id.slice(0, 8).toUpperCase()}</p>
         </div>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={handleDelete}
-          loading={isDeleting}
-          leftIcon={<Trash2 className="w-4 h-4" />}
-        >
-          Excluir
-        </Button>
+        {pedido.status !== 'cancelado' && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCancel}
+            loading={isDeleting}
+            leftIcon={<XCircle className="w-4 h-4" />}
+            className="text-red-600 border-red-200 hover:bg-red-50"
+          >
+            Cancelar pedido
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -222,7 +312,16 @@ export default function PedidoDetailPage({ params }: Props) {
               {pedido.cliente_telefone && (
                 <div>
                   <dt className="text-gray-500 text-xs">Telefone</dt>
-                  <dd className="font-medium text-gray-900 mt-0.5">{pedido.cliente_telefone}</dd>
+                  <dd className="font-medium text-gray-900 mt-0.5">
+                    <a
+                      href={`https://wa.me/55${pedido.cliente_telefone.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-600 hover:text-green-700 hover:underline"
+                    >
+                      {pedido.cliente_telefone}
+                    </a>
+                  </dd>
                 </div>
               )}
               {pedido.data_entrega && (
@@ -276,6 +375,9 @@ export default function PedidoDetailPage({ params }: Props) {
               </div>
             </Card>
           )}
+
+          {/* Client history */}
+          <HistoricoCliente clienteNome={pedido.cliente_nome} pedidoAtualId={id} />
         </div>
 
         {/* Right sidebar: status + actions */}
@@ -291,6 +393,9 @@ export default function PedidoDetailPage({ params }: Props) {
               >
                 Mover para Produção
               </Button>
+              <p className="text-xs text-gray-400 text-center mt-1.5">
+                Cria lotes de produção automaticamente
+              </p>
             </Card>
           )}
 
@@ -298,7 +403,7 @@ export default function PedidoDetailPage({ params }: Props) {
           <Card>
             <CardHeader>
               <CardTitle>Status</CardTitle>
-              {!editingStatus && (
+              {!editingStatus && pedido.status !== 'cancelado' && (
                 <button
                   className="text-xs text-primary-600 hover:text-primary-800 font-medium"
                   onClick={() => {

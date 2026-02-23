@@ -45,6 +45,15 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const { itens, ...pedidoData } = parsed.data
 
+  // Fetch current state before update (needed for batch creation)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: pedidoAntes } = await (supabase as any)
+    .from('pedidos')
+    .select('status, data_entrega, itens_pedido(*)')
+    .eq('id', id)
+    .eq('confeiteiro_id', user.id)
+    .single() as { data: { status: string; data_entrega: string | null; itens_pedido: any[] } | null }
+
   // Update main pedido record
   const { data, error } = await supabase
     .from('pedidos')
@@ -55,6 +64,48 @@ export async function PATCH(request: Request, { params }: Params) {
     .single()
 
   if (error || !data) return NextResponse.json({ error: 'Update failed' }, { status: 500 })
+
+  // Auto-create producao_lotes when moving to 'producao'
+  const movingToProducao =
+    pedidoData.status === 'producao' && pedidoAntes?.status !== 'producao'
+
+  if (movingToProducao) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const itensAtuais: any[] = (pedidoAntes as any)?.itens_pedido ?? []
+
+    const grouped = new Map<string, { nome: string; quantidade: number; produto_id: string | null }>()
+    for (const item of itensAtuais) {
+      const key = item.produto_id ?? item.nome_produto
+      const existing = grouped.get(key)
+      if (existing) {
+        existing.quantidade += item.quantidade
+      } else {
+        grouped.set(key, {
+          nome: item.nome_produto,
+          quantidade: item.quantidade,
+          produto_id: item.produto_id ?? null,
+        })
+      }
+    }
+
+    if (grouped.size > 0) {
+      const dataProducao = pedidoAntes?.data_entrega
+        ? pedidoAntes.data_entrega.split('T')[0]
+        : new Date().toISOString().split('T')[0]
+
+      const lotes = Array.from(grouped.values()).map((g) => ({
+        confeiteiro_id: user.id,
+        nome_produto: g.nome,
+        quantidade_planejada: g.quantidade,
+        quantidade_produzida: 0,
+        data_producao: dataProducao,
+        custo_total: 0,
+        produto_id: g.produto_id,
+      }))
+
+      await (supabase as any).from('producao_lotes').insert(lotes)
+    }
+  }
 
   // Replace itens if provided
   if (itens !== undefined) {
@@ -75,6 +126,7 @@ export async function PATCH(request: Request, { params }: Params) {
   return NextResponse.json(data)
 }
 
+// Soft-delete: marca como cancelado em vez de remover fisicamente
 export async function DELETE(_req: Request, { params }: Params) {
   const { id } = await params
   const supabase = await createSupabaseServerClient()
@@ -84,9 +136,10 @@ export async function DELETE(_req: Request, { params }: Params) {
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
     .from('pedidos')
-    .delete()
+    .update({ status: 'cancelado' })
     .eq('id', id)
     .eq('confeiteiro_id', user.id)
 

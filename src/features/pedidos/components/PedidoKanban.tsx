@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import {
   DndContext,
   DragOverlay,
@@ -13,6 +14,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
+import { Plus } from 'lucide-react'
 import { PedidoCard } from './PedidoCard'
 import {
   PEDIDO_STATUS_LABELS,
@@ -22,6 +24,17 @@ import {
   type PedidoStatus,
 } from '../types/pedido.types'
 import { useUpdatePedido } from '../hooks/usePedidos'
+
+// ─── Empty state messages per column ─────────────────────────
+
+const EMPTY_STATE: Record<PedidoStatus, { msg: string; cta?: boolean }> = {
+  novo:       { msg: 'Nenhum pedido novo',       cta: true  },
+  confirmado: { msg: 'Nenhum pedido confirmado', cta: false },
+  producao:   { msg: 'Nada em produção',         cta: false },
+  pronto:     { msg: 'Nada pronto ainda',        cta: false },
+  entregue:   { msg: 'Nenhuma entrega ainda',    cta: false },
+  cancelado:  { msg: 'Sem cancelamentos',        cta: false },
+}
 
 // ─── Droppable Column ────────────────────────────────────────
 
@@ -34,6 +47,7 @@ function KanbanColumn({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const colors = PEDIDO_STATUS_COLUMN_COLORS[status]
+  const emptyState = EMPTY_STATE[status]
 
   return (
     <div className="flex flex-col min-w-[220px] w-[220px] flex-shrink-0 md:min-w-0 md:w-auto md:flex-1">
@@ -63,8 +77,17 @@ function KanbanColumn({
         </SortableContext>
 
         {pedidos.length === 0 && (
-          <div className="flex items-center justify-center h-24 text-xs text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
-            Arraste aqui
+          <div className="flex flex-col items-center justify-center h-24 gap-2 border-2 border-dashed border-gray-200 rounded-lg">
+            <p className="text-xs text-gray-400 text-center px-2">{emptyState.msg}</p>
+            {emptyState.cta && (
+              <Link
+                href="/pedidos/novo"
+                className="flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 bg-white px-2.5 py-1 rounded-lg border border-primary-200 shadow-sm hover:shadow transition-all"
+              >
+                <Plus className="w-3 h-3" />
+                Novo pedido
+              </Link>
+            )}
           </div>
         )}
       </div>
