@@ -14,21 +14,22 @@ export async function PATCH(request: Request, { params }: Params) {
   const parsed = loteUpdateSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 422 })
 
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from('producao_lotes')
-    .update(parsed.data)
+    .update({ ...parsed.data, updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('confeiteiro_id', user.id)
     .select()
-    .single()
+    .single() as { data: Record<string, unknown> | null; error: Error | null }
 
   if (error || !data) return NextResponse.json({ error: 'Update failed' }, { status: 500 })
 
+  const qtdPlanejada = Number(data.quantidade_planejada ?? 0)
+  const qtdProduzida = Number(data.quantidade_produzida ?? 0)
   return NextResponse.json({
     ...data,
-    progresso: data.quantidade_planejada > 0
-      ? Math.round((data.quantidade_produzida / data.quantidade_planejada) * 100)
-      : 0,
+    progresso: qtdPlanejada > 0 ? Math.round((qtdProduzida / qtdPlanejada) * 100) : 0,
   })
 }
 

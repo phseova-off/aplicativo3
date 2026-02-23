@@ -10,16 +10,19 @@ interface CustoCalculadoraProps {
   ingredientes: IngredienteValues[]
   /** Preço de venda atual (controlado externamente) */
   preco: number
+  /** Quantas unidades a receita produz (para custo por unidade) */
+  rendimento?: number
   onPrecoChange: (preco: number) => void
 }
 
-export function CustoCalculadora({ ingredientes, preco, onPrecoChange }: CustoCalculadoraProps) {
+export function CustoCalculadora({ ingredientes, preco, rendimento = 1, onPrecoChange }: CustoCalculadoraProps) {
   const [markup, setMarkup] = useState(2.5)
 
-  const custoCalculado = ingredientes.reduce(
+  const custoTotal = ingredientes.reduce(
     (sum, ing) => sum + (Number(ing.quantidade) || 0) * (Number(ing.custo_unitario) || 0),
     0
   )
+  const custoCalculado = rendimento > 1 ? custoTotal / rendimento : custoTotal
   const precoSugerido = custoCalculado * markup
   const margem = preco > 0 ? ((preco - custoCalculado) / preco) * 100 : 0
   const lucro = preco - custoCalculado
@@ -41,8 +44,13 @@ export function CustoCalculadora({ ingredientes, preco, onPrecoChange }: CustoCa
       {/* Cost breakdown */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-lg p-3 text-center shadow-sm">
-          <p className="text-xs text-gray-500 mb-1">Custo dos ingredientes</p>
+          <p className="text-xs text-gray-500 mb-1">
+            Custo por unidade{rendimento > 1 && ` (÷${rendimento})`}
+          </p>
           <p className="text-lg font-bold text-gray-900">{formatCurrency(custoCalculado)}</p>
+          {rendimento > 1 && (
+            <p className="text-xs text-gray-400">Total ingredientes: {formatCurrency(custoTotal)}</p>
+          )}
         </div>
         <div className="bg-white rounded-lg p-3 text-center shadow-sm">
           <p className="text-xs text-gray-500 mb-1">Lucro estimado</p>

@@ -14,6 +14,7 @@ export type ProdutoCategoria = 'trufa' | 'bombom' | 'kit' | 'outro'
 export type TransacaoTipo    = 'receita' | 'despesa'
 export type MembroRole       = 'owner' | 'editor' | 'viewer'
 export type UnidadeMedida    = 'kg' | 'g' | 'l' | 'ml' | 'un' | 'cx' | 'pct'
+export type LoteStatus       = 'planejado' | 'em_andamento' | 'concluido' | 'cancelado'
 
 // ─── JSONB Schemas ────────────────────────────────────────────
 
@@ -222,6 +223,17 @@ export interface ProducaoLote {
   data_producao: string           // DATE: YYYY-MM-DD
   custo_total: number
   observacoes: string | null
+  // ── Campos adicionados na migration 009 ──
+  /** UUID do pedido de origem (nullable para lotes criados manualmente) */
+  pedido_id: string | null
+  /** Ciclo de vida do lote */
+  status: LoteStatus
+  /** Custo calculado com preços vigentes na criação */
+  custo_estimado: number
+  /** Custo real calculado na conclusão (preços na data de conclusão) */
+  custo_real: number | null
+  /** Motivo do desvio quando quantidade_produzida < quantidade_planejada */
+  motivo_desvio: string | null
   created_at: string
   updated_at: string
 }
