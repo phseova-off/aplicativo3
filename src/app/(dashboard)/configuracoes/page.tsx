@@ -536,6 +536,14 @@ function SecaoCardapioPublico() {
               </p>
             </div>
           )}
+
+          <Link
+            href="/configuracoes/cardapio-publico"
+            className="flex items-center justify-between gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium pt-1"
+          >
+            <span>Configurações avançadas do cardápio</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
         </div>
       )}
     </Card>

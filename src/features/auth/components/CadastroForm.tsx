@@ -12,7 +12,12 @@ import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
 import { GoogleButton } from './GoogleButton'
 
-export function CadastroForm() {
+interface CadastroFormProps {
+  /** UUID da confeitaria que indicou este cadastro (via ?ref= no link do cardápio) */
+  refConfeitariaId?: string
+}
+
+export function CadastroForm({ refConfeitariaId }: CadastroFormProps) {
   const router = useRouter()
 
   const {
@@ -30,6 +35,16 @@ export function CadastroForm() {
       password: values.password,
       options: {
         emailRedirectTo: `${window.location.origin}/api/auth/callback`,
+        // Armazena o ref no metadata do usuário para rastreamento de aquisição viral.
+        // O webhook/trigger de criação de usuário lê este campo e atualiza confeiteiros.
+        data: refConfeitariaId
+          ? {
+              acquisition_source: 'viral',
+              ref_confeitaria_id: refConfeitariaId,
+            }
+          : {
+              acquisition_source: 'organic',
+            },
       },
     })
 
@@ -48,6 +63,12 @@ export function CadastroForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {refConfeitariaId && (
+        <div className="bg-primary-50 border border-primary-100 rounded-xl p-3 text-xs text-primary-700 text-center">
+          🎂 Você foi indicado por uma confeiteira parceira!
+        </div>
+      )}
+
       <Input
         label="E-mail"
         type="email"

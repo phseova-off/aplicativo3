@@ -51,6 +51,7 @@ export async function GET(_req: Request, { params }: Params) {
   return NextResponse.json(
     {
       confeitaria: {
+        id: confeitaria.id,
         nome: confeitaria.nome,
         cidade: confeitaria.cidade,
         telefone: confeitaria.telefone,

@@ -10,7 +10,7 @@ export const itemPedidoSchema = z.object({
 export const pedidoSchema = z.object({
   cliente_nome: z.string().min(2, 'Nome do cliente obrigatório'),
   cliente_telefone: z.string().optional().nullable(),
-  canal: z.enum(['whatsapp', 'instagram', 'presencial']).default('presencial'),
+  canal: z.enum(['whatsapp', 'instagram', 'presencial', 'cardapio_publico']).default('presencial'),
   status: z
     .enum(['novo', 'confirmado', 'producao', 'pronto', 'entregue', 'cancelado'])
     .default('novo'),

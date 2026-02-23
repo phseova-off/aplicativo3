@@ -44,7 +44,17 @@ export default async function MenuPage({ params }: Props) {
     notFound()
   }
 
-  const { confeitaria, produtos } = data
+  const { confeitaria, produtos } = data as {
+    confeitaria: {
+      id: string; nome: string; cidade: string | null; telefone: string | null
+      descricao: string | null; logo_url: string | null; area_entrega: string | null
+      prazo_padrao_dias: number | null; horarios_atendimento: string | null; slug: string | null
+    }
+    produtos: Array<{
+      id: string; nome: string; descricao: string | null; preco: number
+      categoria: string; foto_url: string | null
+    }>
+  }
 
   return <CardapioPublico confeitaria={confeitaria} produtos={produtos} />
 }

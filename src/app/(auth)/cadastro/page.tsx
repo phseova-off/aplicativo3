@@ -3,7 +3,13 @@ import { CadastroForm } from '@/features/auth/components/CadastroForm'
 
 export const metadata = { title: 'Criar conta — Doceria Pro' }
 
-export default function CadastroPage() {
+interface Props {
+  searchParams: Promise<{ ref?: string }>
+}
+
+export default async function CadastroPage({ searchParams }: Props) {
+  const { ref } = await searchParams
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-orange-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
@@ -16,7 +22,7 @@ export default function CadastroPage() {
           <p className="text-gray-600 mt-1">Organize sua doceria em minutos.</p>
         </div>
         <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
-          <CadastroForm />
+          <CadastroForm refConfeitariaId={ref} />
         </div>
       </div>
     </div>

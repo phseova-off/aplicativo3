@@ -9,7 +9,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 // ─── Enums ───────────────────────────────────────────────────
 export type PlanoTipo        = 'free' | 'starter' | 'pro'
 export type PedidoStatus     = 'novo' | 'confirmado' | 'producao' | 'pronto' | 'entregue' | 'cancelado'
-export type PedidoCanal      = 'whatsapp' | 'instagram' | 'presencial'
+export type PedidoCanal      = 'whatsapp' | 'instagram' | 'presencial' | 'cardapio_publico'
 export type ProdutoCategoria = 'trufa' | 'bombom' | 'kit' | 'outro'
 export type TransacaoTipo    = 'receita' | 'despesa'
 export type MembroRole       = 'owner' | 'editor' | 'viewer'

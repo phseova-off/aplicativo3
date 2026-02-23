@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { MessageCircle, MapPin, Clock, Package, Search, Share2, Check } from 'lucide-react'
+import { MessageCircle, MapPin, Clock, Package, Search, Share2, Check, ShoppingBag } from 'lucide-react'
 import { formatCurrency } from '@/shared/lib/utils'
 import type { ProdutoCategoria } from '@/server/db/types'
 
@@ -29,6 +29,7 @@ interface Produto {
 }
 
 interface Confeitaria {
+  id: string
   nome: string
   cidade: string | null
   telefone: string | null
@@ -111,6 +112,8 @@ export function CardapioPublico({ confeitaria, produtos }: CardapioPublicoProps)
     }
   }
 
+  const linkPedido = confeitaria.slug ? `/menu/${confeitaria.slug}/pedido` : null
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-50 to-white">
       {/* Header */}
@@ -146,7 +149,7 @@ export function CardapioPublico({ confeitaria, produtos }: CardapioPublicoProps)
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 pb-32">
+      <div className="max-w-2xl mx-auto px-4 pb-40">
         {/* Hero info */}
         {(confeitaria.descricao || confeitaria.horarios_atendimento || confeitaria.area_entrega || confeitaria.prazo_padrao_dias) && (
           <div className="py-4 space-y-2">
@@ -240,47 +243,71 @@ export function CardapioPublico({ confeitaria, produtos }: CardapioPublicoProps)
                   {prods.map((produto) => {
                     const selecionado = pedidoSelecionado.includes(produto.nome)
                     return (
-                      <button
+                      <div
                         key={produto.id}
-                        onClick={() => toggleItem(produto.nome)}
-                        className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
                           selecionado
                             ? 'border-primary-400 bg-primary-50 shadow-sm'
                             : 'border-gray-100 bg-white hover:border-gray-300 hover:shadow-sm'
                         }`}
                       >
                         {/* Foto ou placeholder */}
-                        {produto.foto_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={produto.foto_url}
-                            alt={produto.nome}
-                            className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center flex-shrink-0 text-2xl">
-                            {CATEGORIA_EMOJI[cat as ProdutoCategoria] ?? '🍬'}
-                          </div>
-                        )}
+                        <button
+                          onClick={() => toggleItem(produto.nome)}
+                          className="flex-shrink-0"
+                          aria-label={`Selecionar ${produto.nome}`}
+                        >
+                          {produto.foto_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={produto.foto_url}
+                              alt={produto.nome}
+                              className="w-16 h-16 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center text-2xl">
+                              {CATEGORIA_EMOJI[cat as ProdutoCategoria] ?? '🍬'}
+                            </div>
+                          )}
+                        </button>
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <p className="font-semibold text-gray-900 text-sm leading-tight">{produto.nome}</p>
+                            <button
+                              onClick={() => toggleItem(produto.nome)}
+                              className="text-left"
+                            >
+                              <p className="font-semibold text-gray-900 text-sm leading-tight">{produto.nome}</p>
+                              {produto.descricao && (
+                                <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{produto.descricao}</p>
+                              )}
+                            </button>
                             <span className="text-sm font-bold text-primary-700 flex-shrink-0">
                               {formatCurrency(produto.preco)}
                             </span>
                           </div>
-                          {produto.descricao && (
-                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{produto.descricao}</p>
+
+                          {/* "Fazer Pedido" button per product */}
+                          {linkPedido && (
+                            <a
+                              href={`${linkPedido}?produto=${produto.id}`}
+                              className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 px-2.5 py-1 rounded-full border border-primary-200 transition-colors"
+                            >
+                              <ShoppingBag className="w-3 h-3" />
+                              Fazer Pedido
+                            </a>
                           )}
                         </div>
 
                         {selecionado && (
-                          <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-500 flex items-center justify-center">
+                          <button
+                            onClick={() => toggleItem(produto.nome)}
+                            className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-500 flex items-center justify-center"
+                          >
                             <Check className="w-3 h-3 text-white" />
-                          </div>
+                          </button>
                         )}
-                      </button>
+                      </div>
                     )
                   })}
                 </div>
@@ -288,47 +315,63 @@ export function CardapioPublico({ confeitaria, produtos }: CardapioPublicoProps)
             ))}
           </div>
         )}
+
+        {/* MANDATORY viral loop footer */}
+        <div className="pt-8 pb-4 text-center">
+          <p className="text-xs text-gray-400">
+            Gerenciado com{' '}
+            <a
+              href={`/cadastro?ref=${confeitaria.id}`}
+              className="text-primary-400 hover:text-primary-600 font-medium transition-colors"
+            >
+              Doceria Pro
+            </a>
+            {' '}— crie o seu grátis
+          </p>
+        </div>
       </div>
 
-      {/* Sticky WhatsApp CTA */}
-      {confeitaria.telefone && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur border-t border-gray-100 shadow-2xl z-40">
-          <div className="max-w-2xl mx-auto space-y-2">
-            {pedidoSelecionado.length > 0 && (
-              <p className="text-xs text-center text-gray-500">
-                {pedidoSelecionado.length} item{pedidoSelecionado.length !== 1 ? 's' : ''} selecionado{pedidoSelecionado.length !== 1 ? 's' : ''}
-                {' · '}
-                <button onClick={() => setPedidoSelecionado([])} className="text-red-400 hover:text-red-600">
-                  Limpar
-                </button>
-              </p>
+      {/* Sticky CTA — WhatsApp + Pedido via formulário */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur border-t border-gray-100 shadow-2xl z-40">
+        <div className="max-w-2xl mx-auto space-y-2">
+          {pedidoSelecionado.length > 0 && (
+            <p className="text-xs text-center text-gray-500">
+              {pedidoSelecionado.length} item{pedidoSelecionado.length !== 1 ? 's' : ''} selecionado{pedidoSelecionado.length !== 1 ? 's' : ''}
+              {' · '}
+              <button onClick={() => setPedidoSelecionado([])} className="text-red-400 hover:text-red-600">
+                Limpar
+              </button>
+            </p>
+          )}
+
+          <div className="flex gap-2">
+            {/* Pedido pelo formulário (principal) */}
+            {linkPedido && (
+              <a
+                href={linkPedido}
+                className="flex-1 flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                {pedidoSelecionado.length > 0 ? `Fazer Pedido (${pedidoSelecionado.length})` : 'Fazer Pedido'}
+              </a>
             )}
-            <a
-              href={montarMensagemWhatsApp()}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3.5 rounded-xl transition-colors shadow-lg text-sm"
-            >
-              <MessageCircle className="w-5 h-5" />
-              {pedidoSelecionado.length > 0
-                ? `Pedir via WhatsApp (${pedidoSelecionado.length} item${pedidoSelecionado.length !== 1 ? 's' : ''})`
-                : 'Fazer pedido via WhatsApp'}
-            </a>
+
+            {/* WhatsApp (secundário, se tiver telefone) */}
+            {confeitaria.telefone && (
+              <a
+                href={montarMensagemWhatsApp()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl transition-colors text-sm ${
+                  linkPedido ? 'px-4' : 'flex-1'
+                }`}
+              >
+                <MessageCircle className="w-4 h-4" />
+                {!linkPedido && 'Pedir via WhatsApp'}
+              </a>
+            )}
           </div>
         </div>
-      )}
-
-      {/* Viral loop footer */}
-      <div className="pb-28 pt-6 text-center">
-        <p className="text-xs text-gray-300">
-          Cardápio criado com{' '}
-          <a
-            href="/"
-            className="text-primary-300 hover:text-primary-500 font-medium transition-colors"
-          >
-            Doceria Pro
-          </a>
-        </p>
       </div>
     </div>
   )
