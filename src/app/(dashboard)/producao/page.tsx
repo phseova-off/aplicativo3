@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   CalendarDays, BookOpen, CakeSlice, Play, CheckCircle,
-  XCircle, Clock, Calendar, Package, Loader2, ChevronRight,
+  XCircle, Clock, Calendar, Package, Loader2, ChevronRight, ShoppingBasket,
 } from 'lucide-react'
 import { Card } from '@/shared/components/ui/Card'
 import { Button } from '@/shared/components/ui/Button'
@@ -158,6 +158,10 @@ export default function ProducaoPage() {
           <Link href="/producao/receitas"
             className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
             <BookOpen className="w-4 h-4" /> Receitas
+          </Link>
+          <Link href="/producao/ingredientes"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            <ShoppingBasket className="w-4 h-4" /> Ingredientes
           </Link>
         </div>
       </div>

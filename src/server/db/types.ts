@@ -145,6 +145,23 @@ export interface ProdutoIngrediente {
   created_at: string
 }
 
+/**
+ * Alerta criado quando o preço de um ingrediente é alterado,
+ * mostrando quais produtos foram afetados.
+ */
+export interface AlertaIngrediente {
+  id: string
+  confeiteiro_id: string
+  ingrediente_id: string
+  ingrediente_nome: string
+  preco_anterior: number
+  preco_novo: number
+  variacao_percentual: number
+  produtos_afetados: number
+  lido: boolean
+  created_at: string
+}
+
 // ─── Tables — Schema v1 (legado — mantido para compatibilidade) ─
 
 /**
@@ -177,6 +194,8 @@ export interface Produto {
   custo_calculado: number         // v2: calculado automaticamente via trigger
   rendimento: number | null       // v2: unidades que a receita rende
   tempo_producao_minutos: number | null  // v2
+  /** Flag: true quando algum ingrediente teve preço alterado após o último cálculo */
+  preco_desatualizado: boolean
   categoria: ProdutoCategoria
   ativo: boolean
   foto_url: string | null

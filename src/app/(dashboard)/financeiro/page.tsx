@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, BarChart3 } from 'lucide-react'
 import { Button } from '@/shared/components/ui/Button'
 import { Card, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Modal } from '@/shared/components/ui/Modal'
@@ -17,19 +18,25 @@ export default function FinanceiroPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Financeiro</h1>
           <p className="text-sm text-gray-500 mt-1">
             Controle suas receitas e despesas
           </p>
         </div>
-        <Button
-          leftIcon={<Plus className="w-4 h-4" />}
-          onClick={() => setIsModalOpen(true)}
-        >
-          Nova transação
-        </Button>
+        <div className="flex gap-2">
+          <Link href="/financeiro/saude"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            <BarChart3 className="w-4 h-4" /> Saúde Financeira
+          </Link>
+          <Button
+            leftIcon={<Plus className="w-4 h-4" />}
+            onClick={() => setIsModalOpen(true)}
+          >
+            Nova transação
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
