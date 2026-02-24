@@ -5,9 +5,10 @@ import { NextResponse, type NextRequest } from 'next/server'
 const PUBLIC_PREFIXES = [
   '/login',
   '/cadastro',
-  '/esqueci-senha',
+  '/recuperar-senha',
   '/api/auth',
   '/api/stripe/webhook', // Stripe webhooks don't have session
+  '/menu',               // Public menu pages
 ]
 
 function isPublic(pathname: string) {
@@ -65,7 +66,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Authenticated + hits auth pages → /dashboard ──────────
-  if (user && (pathname === '/login' || pathname === '/cadastro')) {
+  if (user && (pathname === '/login' || pathname === '/cadastro' || pathname === '/recuperar-senha')) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

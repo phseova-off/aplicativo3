@@ -68,7 +68,7 @@ export function LoginForm() {
       />
 
       <div className="flex justify-end">
-        <Link href="/esqueci-senha" className="text-sm text-primary-600 hover:text-primary-700">
+        <Link href="/recuperar-senha" className="text-sm text-primary-600 hover:text-primary-700">
           Esqueci a senha
         </Link>
       </div>

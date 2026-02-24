@@ -85,3 +85,51 @@ export type OnboardingStep3    = z.infer<typeof onboardingStep3Schema>
 export type OnboardingStep4    = z.infer<typeof onboardingStep4Schema>
 export type OnboardingStep5    = z.infer<typeof onboardingStep5Schema>
 export type IngredienteLinha   = z.infer<typeof ingredienteLinhaSchema>
+
+// ─── Onboarding simplificado — 3 passos ─────────────────────
+
+export const ESTADOS_BR = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO',
+  'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI',
+  'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
+] as const
+
+export const TIPOS_PRODUTO = [
+  'bolos',
+  'tortas',
+  'trufas',
+  'doces_finos',
+  'bem_casados',
+  'outros',
+] as const
+
+export const TIPOS_PRODUTO_LABEL: Record<string, string> = {
+  bolos: 'Bolos',
+  tortas: 'Tortas',
+  trufas: 'Trufas',
+  doces_finos: 'Doces Finos',
+  bem_casados: 'Bem-casados',
+  outros: 'Outros',
+}
+
+export const onboardingSimplStep1Schema = z.object({
+  nome_confeitaria: z
+    .string()
+    .min(2, 'Nome deve ter no mínimo 2 caracteres')
+    .max(100, 'Nome muito longo'),
+})
+
+export const onboardingSimplStep2Schema = z.object({
+  cidade: z.string().min(2, 'Informe sua cidade'),
+  estado: z.enum(ESTADOS_BR, { required_error: 'Selecione seu estado' }),
+})
+
+export const onboardingSimplStep3Schema = z.object({
+  tipos_produto: z
+    .array(z.enum(TIPOS_PRODUTO))
+    .min(1, 'Selecione pelo menos um tipo de produto'),
+})
+
+export type OnboardingSimplStep1 = z.infer<typeof onboardingSimplStep1Schema>
+export type OnboardingSimplStep2 = z.infer<typeof onboardingSimplStep2Schema>
+export type OnboardingSimplStep3 = z.infer<typeof onboardingSimplStep3Schema>

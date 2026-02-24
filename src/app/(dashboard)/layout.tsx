@@ -16,20 +16,21 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
-  const { data: profile } = await supabase
-    .from('confeiteiros')
+  // Prefer v2 confeitarias table; fall back to legacy confeiteiros
+  const { data: confeitaria } = await supabase
+    .from('confeitarias')
     .select('nome, plano, onboarding_completo')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
-  if (!profile?.onboarding_completo) {
+  if (!confeitaria?.onboarding_completo) {
     redirect('/onboarding')
   }
 
   return (
     <AppLayout
-      userName={profile?.nome ?? user.email ?? 'Usuário'}
-      planName={profile?.plano ?? 'free'}
+      userName={confeitaria?.nome ?? user.email ?? 'Usuário'}
+      planName={confeitaria?.plano ?? 'free'}
     >
       {children}
     </AppLayout>
