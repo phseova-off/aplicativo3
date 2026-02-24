@@ -11,6 +11,7 @@ import { useCreateTransacao } from '../hooks/useFinanceiro'
 
 interface TransacaoFormProps {
   onSuccess?: () => void
+  tipoInicial?: 'receita' | 'despesa'
 }
 
 const tipoOptions = [
@@ -18,7 +19,7 @@ const tipoOptions = [
   { value: 'despesa', label: 'Despesa' },
 ]
 
-export function TransacaoForm({ onSuccess }: TransacaoFormProps) {
+export function TransacaoForm({ onSuccess, tipoInicial = 'receita' }: TransacaoFormProps) {
   const { mutate: create, isPending } = useCreateTransacao()
 
   const {
@@ -31,7 +32,7 @@ export function TransacaoForm({ onSuccess }: TransacaoFormProps) {
   } = useForm<TransacaoFormValues>({
     resolver: zodResolver(transacaoSchema),
     defaultValues: {
-      tipo: 'receita',
+      tipo: tipoInicial,
       data: new Date().toISOString().split('T')[0],
     },
   })

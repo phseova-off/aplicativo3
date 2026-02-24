@@ -6,7 +6,7 @@ const transacaoSchema = z.object({
   tipo: z.enum(['receita', 'despesa']),
   categoria: z.string().min(1),
   valor: z.number().positive(),
-  descricao: z.string().optional(),
+  descricao: z.string().optional().nullable(),
   data: z.string().min(1),
   pedido_id: z.string().uuid().optional().nullable(),
 })
@@ -20,26 +20,43 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const mes = searchParams.get('mes') // YYYY-MM
   const tipo = searchParams.get('tipo')
+  const categoria = searchParams.get('categoria')
+  const page = parseInt(searchParams.get('page') ?? '1', 10)
+  const limit = parseInt(searchParams.get('limit') ?? '50', 10)
+  const offset = (page - 1) * limit
 
   let query = supabase
     .from('transacoes')
-    .select('*')
-    .eq('user_id', user.id)
+    .select('*', { count: 'exact' })
+    .eq('confeiteiro_id', user.id)
     .order('data', { ascending: false })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
 
   if (mes) {
-    query = query.gte('data', `${mes}-01`).lte('data', `${mes}-31`)
+    const [ano, m] = mes.split('-')
+    const mesNum = parseInt(m, 10)
+    const anoNum = parseInt(ano, 10)
+    const inicio = `${ano}-${m}-01`
+    const proximoMes = mesNum === 12
+      ? `${anoNum + 1}-01-01`
+      : `${anoNum}-${String(mesNum + 1).padStart(2, '0')}-01`
+    query = query.gte('data', inicio).lt('data', proximoMes)
   }
 
   if (tipo === 'receita' || tipo === 'despesa') {
     query = query.eq('tipo', tipo)
   }
 
-  const { data, error } = await query
+  if (categoria) {
+    query = query.eq('categoria', categoria)
+  }
+
+  const { data, error, count } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json(data)
+  return NextResponse.json({ data: data ?? [], total: count ?? 0, page, limit })
 }
 
 export async function POST(request: Request) {
@@ -57,7 +74,10 @@ export async function POST(request: Request) {
 
   const { data, error } = await supabase
     .from('transacoes')
-    .insert({ ...parsed.data, user_id: user.id })
+    .insert({
+      ...parsed.data,
+      confeiteiro_id: user.id,
+    })
     .select()
     .single()
 
@@ -82,7 +102,7 @@ export async function DELETE(request: Request) {
     .from('transacoes')
     .delete()
     .eq('id', id)
-    .eq('user_id', user.id)
+    .eq('confeiteiro_id', user.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

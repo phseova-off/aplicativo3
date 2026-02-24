@@ -267,6 +267,8 @@ export interface Transacao {
   valor: number
   data: string                    // DATE: YYYY-MM-DD
   pedido_id: string | null
+  /** Origem da transação: manual (padrão), pedido_automatico ou lote_automatico */
+  origem: 'manual' | 'pedido_automatico' | 'lote_automatico' | null
   created_at: string
 }
 
@@ -424,6 +426,13 @@ export interface Database {
         Row:           ProdutoIngrediente
         Insert:        ProdutoIngredienteInsert
         Update:        ProdutoIngredienteUpdate
+        Relationships: []
+      }
+      // ── Alertas de variação de preço (migration 010) ─────
+      alertas_ingrediente: {
+        Row:           AlertaIngrediente
+        Insert:        Omit<AlertaIngrediente, 'id' | 'created_at'>
+        Update:        Pick<AlertaIngrediente, 'lido'>
         Relationships: []
       }
       // ── Idempotência Stripe (migration 007) ──────────────

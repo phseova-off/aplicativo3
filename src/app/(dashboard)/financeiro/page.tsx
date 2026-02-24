@@ -1,73 +1,83 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { Plus, BarChart3 } from 'lucide-react'
-import { Button } from '@/shared/components/ui/Button'
-import { Card, CardHeader, CardTitle } from '@/shared/components/ui/Card'
-import { Modal } from '@/shared/components/ui/Modal'
+import dynamic from 'next/dynamic'
 import { LoadingSpinner } from '@/shared/components/ui/LoadingSpinner'
-import { ResumoFinanceiro } from '@/features/financeiro/components/ResumoFinanceiro'
-import { TransacaoList } from '@/features/financeiro/components/TransacaoList'
-import { TransacaoForm } from '@/features/financeiro/components/TransacaoForm'
-import { useTransacoes } from '@/features/financeiro/hooks/useFinanceiro'
+import { FinanceiroNav } from '@/features/financeiro/components/FinanceiroNav'
+import { KPICard } from '@/features/financeiro/components/KPICard'
+import { AlertaPrecos } from '@/features/financeiro/components/AlertaPrecos'
+import { useDashboardFinanceiro } from '@/features/financeiro/hooks/useFinanceiro'
 
-export default function FinanceiroPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const { data: transacoes, isLoading } = useTransacoes()
+// Recharts: lazy-load para evitar problemas de SSR
+const GraficoReceita = dynamic(
+  () => import('@/features/financeiro/components/GraficoReceita').then(m => ({ default: m.GraficoReceita })),
+  { ssr: false, loading: () => <div className="h-[260px] bg-gray-50 rounded-xl animate-pulse" /> }
+)
+const GraficoProdutos = dynamic(
+  () => import('@/features/financeiro/components/GraficoProdutos').then(m => ({ default: m.GraficoProdutos })),
+  { ssr: false, loading: () => <div className="h-[260px] bg-gray-50 rounded-xl animate-pulse" /> }
+)
+
+export default function FinanceiroDashboard() {
+  const { data, isLoading, error } = useDashboardFinanceiro()
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Financeiro</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Controle suas receitas e despesas
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/financeiro/saude"
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-            <BarChart3 className="w-4 h-4" /> Saúde Financeira
-          </Link>
-          <Button
-            leftIcon={<Plus className="w-4 h-4" />}
-            onClick={() => setIsModalOpen(true)}
-          >
-            Nova transação
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Financeiro</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Visão completa da saúde financeira da sua confeitaria
+        </p>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-12">
+      <FinanceiroNav />
+
+      {/* Alerta de preços desatualizados */}
+      {data && (data.totalProdutosDesatualizados > 0 || data.alertasPreco.length > 0) && (
+        <AlertaPrecos
+          alertas={data.alertasPreco}
+          totalDesatualizados={data.totalProdutosDesatualizados}
+        />
+      )}
+
+      {isLoading && (
+        <div className="flex justify-center py-16">
           <LoadingSpinner size="lg" />
         </div>
-      ) : (
-        <>
-          <ResumoFinanceiro transacoes={transacoes ?? []} />
+      )}
 
-          <Card padding="none">
-            <div className="p-6">
-              <CardHeader>
-                <CardTitle>Transações</CardTitle>
-                <span className="text-sm text-gray-500">
-                  {transacoes?.length ?? 0} registros
-                </span>
-              </CardHeader>
-            </div>
-            <TransacaoList transacoes={transacoes ?? []} />
-          </Card>
+      {error && (
+        <div className="text-center py-12 text-red-500 text-sm">
+          Erro ao carregar dados financeiros. Tente recarregar a página.
+        </div>
+      )}
+
+      {data && (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <KPICard label="Receita Bruta" kpi={data.receitaBruta} />
+            <KPICard label="Despesas" kpi={data.despesas} inverterCor />
+            <KPICard label="Lucro Líquido" kpi={data.lucroLiquido} />
+            <KPICard label="Margem %" kpi={data.margemPercentual} formato="percentual" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <GraficoReceita dados={data.historicoMensal} />
+            <GraficoProdutos dados={data.topProdutosMargem} />
+          </div>
         </>
       )}
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Nova Transação"
-      >
-        <TransacaoForm onSuccess={() => setIsModalOpen(false)} />
-      </Modal>
+      {!isLoading && !error && data &&
+        data.receitaBruta.valor === 0 &&
+        data.despesas.valor === 0 &&
+        data.topProdutosMargem.length === 0 && (
+          <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+            <p className="text-gray-500 text-sm">Nenhuma transação este mês ainda.</p>
+            <p className="text-gray-400 text-xs mt-1">
+              Transações são geradas automaticamente quando pedidos são entregues ou lotes de produção concluídos.
+            </p>
+          </div>
+        )}
     </div>
   )
 }
