@@ -830,6 +830,33 @@ CREATE POLICY "Usuarios atualizam seus avatars" ON storage.objects FOR UPDATE TO
 CREATE POLICY "Usuarios deletam seus avatars" ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::TEXT);
 
+-- ┌──────────────────────────────────────────────────────────┐
+-- │  MIGRATION 013 — feedbacks (beta user feedback)          │
+-- └──────────────────────────────────────────────────────────┘
+
+CREATE TABLE IF NOT EXISTS public.feedbacks (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  tipo        TEXT NOT NULL CHECK (tipo IN ('geral', 'bug', 'sugestao')),
+  texto       TEXT NOT NULL,
+  user_email  TEXT,
+  user_nome   TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.feedbacks ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can insert feedback"
+  ON public.feedbacks FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY "Users can view own feedback"
+  ON public.feedbacks FOR SELECT
+  USING (auth.uid() = user_id OR user_id IS NULL);
+
+CREATE INDEX IF NOT EXISTS feedbacks_created_at_idx ON public.feedbacks (created_at DESC);
+CREATE INDEX IF NOT EXISTS feedbacks_tipo_idx        ON public.feedbacks (tipo);
+
 -- ============================================================
 -- FIM DO SCHEMA
 -- ============================================================
