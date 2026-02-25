@@ -1,6 +1,6 @@
 // ============================================================
 // Doceria Pro — Database Types
-// Espelha o schema do Supabase (migrations 001–006).
+// Espelha o schema do Supabase (migrations 001–012).
 // Para regenerar via CLI: npx supabase gen types typescript --local
 // ============================================================
 
@@ -80,6 +80,10 @@ export interface Confeitaria {
   horarios_atendimento: string | null
   /** Se o cardápio público está ativo */
   menu_publico_ativo: boolean
+
+  // ── Campos adicionados na migration 012 ──
+  /** UF do estado (ex: "SP", "RJ") — extraída de cidade quando no formato "Cidade, UF" */
+  estado: string | null
 
   created_at: string
   updated_at: string
@@ -198,6 +202,8 @@ export interface Produto {
   preco_desatualizado: boolean
   categoria: ProdutoCategoria
   ativo: boolean
+  /** Se aparece no cardápio público (migration 008) */
+  visivel_no_cardapio: boolean
   foto_url: string | null
   ingredientes: Ingrediente[]     // legado JSONB — use ProdutoIngrediente para novo código
   created_at: string
@@ -216,6 +222,13 @@ export interface Pedido {
   data_entrega: string | null     // ISO 8601 timestamp
   valor_total: number
   observacoes: string | null
+  // ── Campos adicionados na migration 012 ──
+  /** Número sequencial do pedido dentro da confeitaria (ex: "0001") */
+  numero: string | null
+  /** Valor do sinal pago antecipadamente */
+  valor_sinal: number
+  /** Endereço de entrega (texto livre) */
+  endereco_entrega: string | null
   created_at: string
   updated_at: string
 }
@@ -228,6 +241,8 @@ export interface ItemPedido {
   quantidade: number
   preco_unitario: number
   subtotal: number                // coluna GENERATED — sempre calculada
+  /** Personalização solicitada para este item (ex: "sem açúcar") — migration 012 */
+  personalizacao: string | null
   created_at: string
 }
 
@@ -280,6 +295,8 @@ export interface CronogramaMarketing {
   ano: number
   conteudo: MarketingPost[]
   datas_comemorativas: DataComemorativa[]
+  /** Total de tokens OpenAI consumidos na geração deste cronograma — migration 012 */
+  tokens_usados: number
   created_at: string
 }
 
@@ -308,7 +325,7 @@ export type PedidoInsert = Pick<Pedido, 'confeiteiro_id' | 'cliente_nome'> &
   Partial<Omit<Pedido, 'id' | 'confeiteiro_id' | 'cliente_nome' | 'created_at' | 'updated_at'>>
 
 export type ItemPedidoInsert = Pick<ItemPedido, 'pedido_id' | 'nome_produto' | 'quantidade' | 'preco_unitario'> &
-  Partial<Pick<ItemPedido, 'produto_id'>>
+  Partial<Pick<ItemPedido, 'produto_id' | 'personalizacao'>>
 
 export type ProducaoLoteInsert =
   Pick<ProducaoLote, 'confeiteiro_id' | 'nome_produto' | 'quantidade_planejada' | 'data_producao'> &
@@ -331,7 +348,7 @@ export type ProdutoUpdate             = Partial<Omit<Produto, 'id' | 'confeiteir
 export type PedidoUpdate              = Partial<Omit<Pedido, 'id' | 'confeiteiro_id' | 'created_at' | 'updated_at'>>
 export type ProducaoLoteUpdate        = Partial<Omit<ProducaoLote, 'id' | 'confeiteiro_id' | 'created_at' | 'updated_at'>>
 export type TransacaoUpdate           = Partial<Omit<Transacao, 'id' | 'confeiteiro_id' | 'created_at'>>
-export type CronogramaUpdate          = Partial<Pick<CronogramaMarketing, 'conteudo' | 'datas_comemorativas'>>
+export type CronogramaUpdate          = Partial<Pick<CronogramaMarketing, 'conteudo' | 'datas_comemorativas' | 'tokens_usados'>>
 
 // ─── Joined / Extended Types ──────────────────────────────────
 
@@ -355,13 +372,28 @@ export interface ProdutoComIngredientes extends Produto {
   produtos_ingredientes: Array<ProdutoIngrediente & { ingrediente: IngredienteCatalogo }>
 }
 
-/** Resumo financeiro de um período */
+/** Resumo financeiro de um período (calculado in-app) */
 export interface ResumoFinanceiro {
   total_receitas: number
   total_despesas: number
   lucro_liquido: number
   ticket_medio: number
   total_pedidos_pagos: number
+}
+
+/**
+ * View resumo_financeiro_mensal — criada na migration 012.
+ * Agrupa transações por confeitaria e mês.
+ */
+export interface ResumoFinanceiroMensal {
+  confeitaria_id: string
+  mes: string           // DATE: primeiro dia do mês (YYYY-MM-DD)
+  total_receitas: number
+  total_despesas: number
+  lucro_liquido: number
+  qtd_receitas: number
+  qtd_despesas: number
+  pedidos_pagos: number
 }
 
 /** Pedido resumido para listas */
@@ -477,7 +509,7 @@ export interface Database {
       itens_pedido: {
         Row:           ItemPedido
         Insert:        ItemPedidoInsert
-        Update:        Partial<Pick<ItemPedido, 'quantidade' | 'preco_unitario' | 'nome_produto'>>
+        Update:        Partial<Pick<ItemPedido, 'quantidade' | 'preco_unitario' | 'nome_produto' | 'personalizacao'>>
         Relationships: []
       }
       producao_lotes: {
@@ -499,7 +531,12 @@ export interface Database {
         Relationships: []
       }
     }
-    Views: Record<string, never>
+    Views: {
+      /** Agregação financeira mensal por confeitaria — migration 012 */
+      resumo_financeiro_mensal: {
+        Row: ResumoFinanceiroMensal
+      }
+    }
     Functions: {
       is_member:  { Args: { p_confeitaria_id: string }; Returns: boolean }
       is_editor:  { Args: { p_confeitaria_id: string }; Returns: boolean }
@@ -514,6 +551,7 @@ export interface Database {
       transacao_tipo:    TransacaoTipo
       membro_role:       MembroRole
       unidade_medida:    UnidadeMedida
+      lote_status:       LoteStatus
     }
   }
 }
