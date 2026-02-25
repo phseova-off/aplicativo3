@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/server/db/client'
 import { AppLayout } from '@/shared/components/layout/AppLayout'
+import { FeedbackButton } from '@/features/feedback/components/FeedbackButton'
 
 export default async function DashboardLayout({
   children,
@@ -28,11 +29,14 @@ export default async function DashboardLayout({
   }
 
   return (
-    <AppLayout
-      userName={confeitaria?.nome ?? user.email ?? 'Usuário'}
-      planName={confeitaria?.plano ?? 'free'}
-    >
-      {children}
-    </AppLayout>
+    <>
+      <AppLayout
+        userName={confeitaria?.nome ?? user.email ?? 'Usuário'}
+        planName={confeitaria?.plano ?? 'free'}
+      >
+        {children}
+      </AppLayout>
+      <FeedbackButton />
+    </>
   )
 }
