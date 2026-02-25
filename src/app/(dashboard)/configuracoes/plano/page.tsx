@@ -187,7 +187,7 @@ export default function PlanoPage() {
     const res = await fetch('/api/stripe/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plano: planoKey }),
+      body: JSON.stringify({ planKey: planoKey }),
     })
 
     if (res.ok) {

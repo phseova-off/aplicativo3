@@ -26,8 +26,8 @@ export async function POST(request: Request) {
     userId: user.id,
     userEmail: user.email!,
     planKey: parsed.data.planKey as PlanKey,
-    successUrl: `${appUrl}/dashboard?checkout=success`,
-    cancelUrl: `${appUrl}/dashboard?checkout=cancelled`,
+    successUrl: `${appUrl}/dashboard?upgrade=success`,
+    cancelUrl: `${appUrl}/configuracoes/plano`,
   })
 
   return NextResponse.json({ url })

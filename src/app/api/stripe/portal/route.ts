@@ -10,13 +10,17 @@ export async function POST() {
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: perfil } = await supabase
-    .from('confeiteiros')
-    .select('stripe_customer_id')
-    .eq('id', user.id)
-    .single()
+  // v2: look up stripe_customer_id via confeitaria_membros → confeitarias
+  const { data: membro } = await supabase
+    .from('confeitaria_membros')
+    .select('confeitaria_id, confeitarias(stripe_customer_id)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
 
-  const customerId = (perfil as unknown as { stripe_customer_id: string | null })?.stripe_customer_id
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const customerId = (membro as any)?.confeitarias?.stripe_customer_id as string | null | undefined
 
   if (!customerId) {
     return NextResponse.json(

@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { createSupabaseServerClient } from '@/server/db/client'
+import { UpgradeSuccessToast } from '@/features/planos/components/UpgradeSuccessToast'
 import { KPIGrid }           from '@/features/dashboard/components/KPIGrid'
 import { ParaFazerHoje }     from '@/features/dashboard/components/ParaFazerHoje'
 import { Sparkline }         from '@/features/dashboard/components/Sparkline'
@@ -106,6 +107,11 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-10">
+
+      {/* ── Upgrade success toast (Stripe redirect) ─────── */}
+      <Suspense fallback={null}>
+        <UpgradeSuccessToast />
+      </Suspense>
 
       {/* ── Header ─────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
