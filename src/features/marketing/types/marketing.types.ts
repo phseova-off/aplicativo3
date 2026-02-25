@@ -19,83 +19,18 @@ export interface MarketingPostRico {
   data_comemorativa?: string                           // holiday name if special
 }
 
-// ─── Brazilian holidays ────────────────────────────────────────
+// ─── Re-export from the canonical datas-comemorativas module ─
+// Single source of truth for holiday types/helpers.
 
-export interface DataComemorativaBr {
-  data: string      // YYYY-MM-DD
-  nome: string
-  relevancia: 'alta' | 'media' | 'baixa'
-}
-
-function easterDate(year: number): Date {
-  const a = year % 19
-  const b = Math.floor(year / 100)
-  const c = year % 100
-  const d = Math.floor(b / 4)
-  const e = b % 4
-  const f = Math.floor((b + 8) / 25)
-  const g = Math.floor((b - f + 1) / 3)
-  const h = (19 * a + b - d - g + 15) % 30
-  const i = Math.floor(c / 4)
-  const k = c % 4
-  const l = (32 + 2 * e + 2 * i - h - k) % 7
-  const m = Math.floor((a + 11 * h + 22 * l) / 451)
-  const month = Math.floor((h + l - 7 * m + 114) / 31)
-  const day = ((h + l - 7 * m + 114) % 31) + 1
-  return new Date(year, month - 1, day)
-}
-
-function nthWeekday(year: number, month: number, weekday: number, nth: number): Date {
-  const first = new Date(year, month - 1, 1)
-  const diff = (weekday - first.getDay() + 7) % 7
-  return new Date(year, month - 1, 1 + diff + (nth - 1) * 7)
-}
-
-function iso(d: Date): string {
-  return d.toISOString().split('T')[0]
-}
-
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d)
-  r.setDate(r.getDate() + n)
-  return r
-}
-
-export function getDatasComemorativasBr(mes: number, ano: number): DataComemorativaBr[] {
-  const easter = easterDate(ano)
-  const carnaval = addDays(easter, -47)          // Shrove Tuesday
-  const dFixed = (m: number, d: number) => new Date(ano, m - 1, d)
-
-  const all: DataComemorativaBr[] = [
-    { data: iso(dFixed(1, 1)),              nome: 'Ano Novo',                    relevancia: 'alta'  },
-    { data: iso(addDays(carnaval, -1)),     nome: 'Carnaval – Segunda-feira',    relevancia: 'media' },
-    { data: iso(carnaval),                  nome: 'Carnaval – Terça-feira',      relevancia: 'media' },
-    { data: iso(dFixed(2, 14)),             nome: 'Dia de São Valentim',         relevancia: 'media' },
-    { data: iso(dFixed(3, 8)),              nome: 'Dia Internacional da Mulher', relevancia: 'alta'  },
-    { data: iso(addDays(easter, -2)),       nome: 'Sexta-feira Santa',           relevancia: 'media' },
-    { data: iso(easter),                    nome: 'Páscoa',                      relevancia: 'alta'  },
-    { data: iso(nthWeekday(ano, 5, 0, 2)), nome: 'Dia das Mães',                relevancia: 'alta'  },
-    { data: iso(dFixed(6, 12)),             nome: 'Dia dos Namorados',           relevancia: 'alta'  },
-    { data: iso(dFixed(6, 13)),             nome: 'Festa Junina – Santo Antônio', relevancia: 'media' },
-    { data: iso(dFixed(6, 24)),             nome: 'Festa Junina – São João',     relevancia: 'alta'  },
-    { data: iso(dFixed(6, 29)),             nome: 'Festa Junina – São Pedro',    relevancia: 'media' },
-    { data: iso(nthWeekday(ano, 8, 0, 2)), nome: 'Dia dos Pais',                relevancia: 'alta'  },
-    { data: iso(dFixed(10, 12)),            nome: 'Dia das Crianças',            relevancia: 'alta'  },
-    { data: iso(dFixed(10, 31)),            nome: 'Halloween',                   relevancia: 'baixa' },
-    { data: iso(dFixed(12, 1)),             nome: 'Início do Natal (1º de dez)', relevancia: 'media' },
-    { data: iso(dFixed(12, 25)),            nome: 'Natal',                       relevancia: 'alta'  },
-    { data: iso(dFixed(12, 31)),            nome: 'Réveillon',                   relevancia: 'alta'  },
-  ]
-
-  return all.filter((d) => parseInt(d.data.split('-')[1], 10) === mes)
-}
+export type { DataComemorativaBr } from '@/lib/datas-comemorativas'
+export { getDatasComemorativasBr } from '@/lib/datas-comemorativas'
 
 // ─── Form / API ───────────────────────────────────────────────
 
 export interface CronogramaInput {
   mes: number
   ano: number
-  datas_especiais: DataComemorativaBr[]
+  datas_especiais: import('@/lib/datas-comemorativas').DataComemorativaBr[]
   produtos: string[]          // product names to highlight
 }
 

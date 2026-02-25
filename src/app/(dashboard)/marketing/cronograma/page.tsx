@@ -1,23 +1,27 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Calendar, Package, Sparkles, ListChecks } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar, Package, Sparkles, ListChecks, AlertCircle } from 'lucide-react'
 import { Card, CardHeader, CardTitle } from '@/shared/components/ui/Card'
 import { Button } from '@/shared/components/ui/Button'
 import { LoadingSpinner } from '@/shared/components/ui/LoadingSpinner'
+import { Badge } from '@/shared/components/ui/Badge'
 import { DatePickerDatas } from '@/features/marketing/components/DatePickerDatas'
 import { CalendarioMarketing } from '@/features/marketing/components/CalendarioMarketing'
 import { PostCard } from '@/features/marketing/components/PostCard'
 import { BotaoGerar } from '@/features/marketing/components/BotaoGerar'
+import { PlanoGate } from '@/features/planos/components/PlanoGate'
 import {
   useCronogramaDoMes,
   useGerarCronogramaMarketing,
   useProdutosMarketing,
 } from '@/features/marketing/hooks/useCronogramaMarketing'
+import { usePlano } from '@/features/planos/hooks/usePlano'
 import {
   getDatasComemorativasBr,
   MESES_PT,
 } from '@/features/marketing/types/marketing.types'
+import { PLANO_CONFIG } from '@/features/planos/lib/planFeatures'
 import type { DataComemorativaBr, MarketingPostRico } from '@/features/marketing/types/marketing.types'
 import { cn } from '@/shared/lib/utils'
 
@@ -79,18 +83,54 @@ function Stepper({ steps, current }: { steps: string[]; current: number }) {
   )
 }
 
+// ─── Usage counter badge ──────────────────────────────────────
+
+function UsageCounter({ usado, limite }: { usado: number; limite: number }) {
+  const atLimit = usado >= limite
+  const pct     = Math.min((usado / Math.max(limite, 1)) * 100, 100)
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-gray-500">Cronogramas gerados este mês</span>
+        <span className={cn('font-semibold', atLimit ? 'text-red-600' : 'text-gray-900')}>
+          {usado}/{limite}
+        </span>
+      </div>
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div
+          className={cn('h-full rounded-full transition-all', atLimit ? 'bg-red-500' : 'bg-primary-500')}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {atLimit && (
+        <p className="text-xs text-red-600 flex items-center gap-1">
+          <AlertCircle className="w-3 h-3 shrink-0" />
+          Limite do plano atingido. Renova em 1º do próximo mês.
+        </p>
+      )}
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────
 
 const STEPS = ['Mês', 'Datas', 'Produtos', 'Gerar']
 
 export default function CronogramaPage() {
   const now = new Date()
-  const [mes, setMes]     = useState(now.getMonth() + 1)
-  const [ano, setAno]     = useState(now.getFullYear())
-  const [step, setStep]   = useState(0)
+  const [mes, setMes]   = useState(now.getMonth() + 1)
+  const [ano, setAno]   = useState(now.getFullYear())
+  const [step, setStep] = useState(0)
 
   const [datasEspeciais, setDatasEspeciais] = useState<DataComemorativaBr[]>([])
   const [produtosSel, setProdutosSel]       = useState<string[]>([])
+
+  // Plan + usage
+  const { plano, cronogramasMes, loading: loadingPlano } = usePlano()
+  const planoConfig       = PLANO_CONFIG[plano]
+  const limiteCronogramas = planoConfig.cronogramasIAMes   // 0 | 1 | 3
+  const atLimit           = plano !== 'free' && cronogramasMes >= limiteCronogramas
 
   // Data
   const { data: cronograma, isLoading: loadingCronograma } = useCronogramaDoMes(mes, ano)
@@ -128,7 +168,7 @@ export default function CronogramaPage() {
   const handleGerar = () => {
     gerar(
       { mes, ano, datas_especiais: datasEspeciais, produtos: produtosSel },
-      { onSuccess: () => setStep(3) }  // stay on gerar step (calendar shows below)
+      { onSuccess: () => setStep(3) }
     )
   }
 
@@ -146,13 +186,20 @@ export default function CronogramaPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Calendar className="w-6 h-6 text-primary-600" />
-            Cronograma de Marketing
+            Planejamento de Marketing com IA
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Gere posts personalizados com IA para cada mês, incluindo datas comemorativas.
+            Gere posts personalizados para Instagram e TikTok com inteligência artificial.
           </p>
         </div>
-        <Stepper steps={STEPS} current={step} />
+        <div className="flex items-center gap-3">
+          {!loadingPlano && (
+            <Badge variant={plano === 'free' ? 'default' : plano === 'pro' ? 'purple' : 'info'}>
+              {planoConfig.label}
+            </Badge>
+          )}
+          <Stepper steps={STEPS} current={step} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -280,11 +327,33 @@ export default function CronogramaPage() {
                 </p>
               </div>
 
-              <BotaoGerar
-                onClick={handleGerar}
-                loading={gerando}
-                postCount={estimatedPosts}
-              />
+              {/* Usage counter (only for paid plans) */}
+              {plano !== 'free' && !loadingPlano && (
+                <div className="mb-4">
+                  <UsageCounter usado={cronogramasMes} limite={limiteCronogramas} />
+                </div>
+              )}
+
+              {/* Generate button — gated by plan */}
+              {plano === 'free' ? (
+                /* Free plan: PlanoGate shows blur + lock + UpgradeModal on click */
+                <PlanoGate planoMinimo="starter" feature="cronograma_ia">
+                  <BotaoGerar
+                    onClick={() => {}}
+                    loading={false}
+                    postCount={estimatedPosts}
+                    disabled
+                  />
+                </PlanoGate>
+              ) : (
+                /* Paid plan: normal button, disabled when monthly limit is reached */
+                <BotaoGerar
+                  onClick={handleGerar}
+                  loading={gerando}
+                  postCount={estimatedPosts}
+                  disabled={atLimit}
+                />
+              )}
             </Card>
           )}
         </div>
