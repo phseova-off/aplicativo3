@@ -1,83 +1,86 @@
 'use client'
 
+import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { LoadingSpinner } from '@/shared/components/ui/LoadingSpinner'
+import { Plus } from 'lucide-react'
+import { Button } from '@/shared/components/ui/Button'
 import { FinanceiroNav } from '@/features/financeiro/components/FinanceiroNav'
-import { KPICard } from '@/features/financeiro/components/KPICard'
-import { AlertaPrecos } from '@/features/financeiro/components/AlertaPrecos'
-import { useDashboardFinanceiro } from '@/features/financeiro/hooks/useFinanceiro'
+import { ResumoMes, mesAtual } from '@/features/financeiro/components/ResumoMes'
+import { MetaMensal } from '@/features/financeiro/components/MetaMensal'
+import { RelatorioExporter } from '@/features/financeiro/components/RelatorioExporter'
+import { NovaTransacaoModal } from '@/features/financeiro/components/NovaTransacaoModal'
+import { ExtratoCompleto } from '@/features/financeiro/components/ExtratoCompleto'
+import { useResumoMes } from '@/features/financeiro/hooks/useFinanceiro'
 
-// Recharts: lazy-load para evitar problemas de SSR
-const GraficoReceita = dynamic(
-  () => import('@/features/financeiro/components/GraficoReceita').then(m => ({ default: m.GraficoReceita })),
-  { ssr: false, loading: () => <div className="h-[260px] bg-gray-50 rounded-xl animate-pulse" /> }
-)
-const GraficoProdutos = dynamic(
-  () => import('@/features/financeiro/components/GraficoProdutos').then(m => ({ default: m.GraficoProdutos })),
-  { ssr: false, loading: () => <div className="h-[260px] bg-gray-50 rounded-xl animate-pulse" /> }
+// Recharts: lazy-load para evitar SSR
+const GraficoPizzaDespesas = dynamic(
+  () =>
+    import('@/features/financeiro/components/GraficoPizzaDespesas').then(
+      (m) => ({ default: m.GraficoPizzaDespesas }),
+    ),
+  { ssr: false, loading: () => <div className="h-[260px] bg-gray-50 rounded-xl animate-pulse" /> },
 )
 
-export default function FinanceiroDashboard() {
-  const { data, isLoading, error } = useDashboardFinanceiro()
+// ─── Seção de gráfico (precisa dos dados do resumo) ───────────
+
+function GraficoPizzaSection({ mes }: { mes: string }) {
+  const { data } = useResumoMes(mes)
+  return (
+    <GraficoPizzaDespesas
+      despesasPorCategoria={data?.despesasPorCategoria ?? {}}
+    />
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────
+
+export default function FinanceiroPage() {
+  const [mes, setMes] = useState(mesAtual)
+  const [modalAberto, setModalAberto] = useState(false)
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Financeiro</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Visão completa da saúde financeira da sua confeitaria
-        </p>
+    <div className="space-y-6 pb-10">
+
+      {/* ── Header ─────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Financeiro</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Receitas, despesas e metas da sua confeitaria
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <RelatorioExporter mes={mes} />
+          <Button
+            size="sm"
+            leftIcon={<Plus className="w-4 h-4" />}
+            onClick={() => setModalAberto(true)}
+          >
+            Nova transação
+          </Button>
+        </div>
       </div>
 
+      {/* ── Nav tabs ───────────────────────────────────────── */}
       <FinanceiroNav />
 
-      {/* Alerta de preços desatualizados */}
-      {data && (data.totalProdutosDesatualizados > 0 || data.alertasPreco.length > 0) && (
-        <AlertaPrecos
-          alertas={data.alertasPreco}
-          totalDesatualizados={data.totalProdutosDesatualizados}
-        />
-      )}
+      {/* ── Resumo do mês (selector + KPIs) ───────────────── */}
+      <ResumoMes mes={mes} onChangeMes={setMes} />
 
-      {isLoading && (
-        <div className="flex justify-center py-16">
-          <LoadingSpinner size="lg" />
-        </div>
-      )}
+      {/* ── Pie chart + Meta mensal ───────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <GraficoPizzaSection mes={mes} />
+        <MetaMensal mes={mes} />
+      </div>
 
-      {error && (
-        <div className="text-center py-12 text-red-500 text-sm">
-          Erro ao carregar dados financeiros. Tente recarregar a página.
-        </div>
-      )}
+      {/* ── Extrato de transações ──────────────────────────── */}
+      <ExtratoCompleto mes={mes} />
 
-      {data && (
-        <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPICard label="Receita Bruta" kpi={data.receitaBruta} />
-            <KPICard label="Despesas" kpi={data.despesas} inverterCor />
-            <KPICard label="Lucro Líquido" kpi={data.lucroLiquido} />
-            <KPICard label="Margem %" kpi={data.margemPercentual} formato="percentual" />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <GraficoReceita dados={data.historicoMensal} />
-            <GraficoProdutos dados={data.topProdutosMargem} />
-          </div>
-        </>
-      )}
-
-      {!isLoading && !error && data &&
-        data.receitaBruta.valor === 0 &&
-        data.despesas.valor === 0 &&
-        data.topProdutosMargem.length === 0 && (
-          <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-            <p className="text-gray-500 text-sm">Nenhuma transação este mês ainda.</p>
-            <p className="text-gray-400 text-xs mt-1">
-              Transações são geradas automaticamente quando pedidos são entregues ou lotes de produção concluídos.
-            </p>
-          </div>
-        )}
+      {/* ── Modal nova transação ──────────────────────────── */}
+      <NovaTransacaoModal
+        isOpen={modalAberto}
+        onClose={() => setModalAberto(false)}
+      />
     </div>
   )
 }

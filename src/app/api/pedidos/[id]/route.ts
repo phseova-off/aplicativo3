@@ -107,6 +107,37 @@ export async function PATCH(request: Request, { params }: Params) {
     }
   }
 
+  // ── Auto-transaction when order moves to 'entregue' ─────────
+  const movingToEntregue =
+    pedidoData.status === 'entregue' && pedidoAntes?.status !== 'entregue'
+
+  if (movingToEntregue && (data.valor_total ?? 0) > 0) {
+    // Check if a transaction already exists for this order (created at POST time)
+    const { count } = await supabase
+      .from('transacoes')
+      .select('*', { count: 'exact', head: true })
+      .eq('confeiteiro_id', user.id)
+      .eq('pedido_id', id)
+
+    if ((count ?? 0) === 0) {
+      // No transaction yet — create one
+      const dataTransacao = data.data_entrega
+        ? String(data.data_entrega).split('T')[0]
+        : new Date().toISOString().split('T')[0]
+
+      await supabase.from('transacoes').insert({
+        confeiteiro_id: user.id,
+        tipo:      'receita',
+        categoria: 'pedido',
+        valor:     data.valor_total,
+        descricao: `Pedido #${id.slice(0, 8)} — ${data.cliente_nome}`,
+        data:      dataTransacao,
+        pedido_id: id,
+        origem:    'pedido_automatico',
+      })
+    }
+  }
+
   // Replace itens if provided
   if (itens !== undefined) {
     await supabase.from('itens_pedido').delete().eq('pedido_id', id)

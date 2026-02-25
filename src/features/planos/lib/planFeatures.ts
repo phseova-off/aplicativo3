@@ -65,6 +65,8 @@ export type FeatureGate =
   | 'pedidos_ilimitados'
   | 'cronograma_ia'
   | 'relatorios_avancados'
+  | 'meta_mensal'
+  | 'relatorio_pdf'
 
 export const FEATURE_GATE_INFO: Record<
   FeatureGate,
@@ -90,6 +92,18 @@ export const FEATURE_GATE_INFO: Record<
     titulo: 'Relatórios avançados',
     descricao:
       'Acesse relatórios detalhados de vendas, margens por produto, sazonalidade e projeções de receita.',
+    planoMinimo: 'pro',
+  },
+  meta_mensal: {
+    titulo: 'Meta mensal de receita',
+    descricao:
+      'Defina metas mensais de receita e acompanhe seu progresso com notificações automáticas ao atingir 80% e 100%.',
+    planoMinimo: 'starter',
+  },
+  relatorio_pdf: {
+    titulo: 'Exportar relatório PDF',
+    descricao:
+      'Gere relatórios financeiros completos em PDF com resumo do mês, gráficos e lista de transações.',
     planoMinimo: 'pro',
   },
 }

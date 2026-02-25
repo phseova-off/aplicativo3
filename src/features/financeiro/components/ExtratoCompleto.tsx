@@ -1,21 +1,28 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, Plus, Trash2, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Download, ShoppingBag, ChevronLeft, ChevronRight, Link as LinkIcon } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/shared/components/ui/Button'
 import { Card, CardHeader, CardTitle } from '@/shared/components/ui/Card'
-import { Modal } from '@/shared/components/ui/Modal'
 import { LoadingSpinner } from '@/shared/components/ui/LoadingSpinner'
-import { TransacaoForm } from './TransacaoForm'
+import { NovaTransacaoModal } from './NovaTransacaoModal'
 import { cn, formatCurrency, formatDate } from '@/shared/lib/utils'
 import { useTransacoesPaginadas, useDeleteTransacao } from '../hooks/useFinanceiro'
 import { CATEGORIAS_RECEITA, CATEGORIAS_DESPESA } from '../types/financeiro.types'
 import type { Transacao } from '@/server/db/types'
 
+// ─── Helpers ──────────────────────────────────────────────────
+
 const CATEGORIAS_TODAS = [
   ...CATEGORIAS_RECEITA,
-  ...CATEGORIAS_DESPESA.filter(c => !CATEGORIAS_RECEITA.includes(c as never)),
+  ...CATEGORIAS_DESPESA.filter((c) => !CATEGORIAS_RECEITA.includes(c as never)),
 ]
+
+function mesAtualStr(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
 
 const MESES_OPTIONS = Array.from({ length: 12 }, (_, i) => {
   const d = new Date()
@@ -28,7 +35,7 @@ const MESES_OPTIONS = Array.from({ length: 12 }, (_, i) => {
 
 function exportCSV(transacoes: Transacao[]) {
   const headers = ['Data', 'Tipo', 'Categoria', 'Descrição', 'Valor (R$)', 'Origem']
-  const rows = transacoes.map(t => [
+  const rows = transacoes.map((t) => [
     t.data,
     t.tipo === 'receita' ? 'Receita' : 'Despesa',
     t.categoria,
@@ -36,7 +43,7 @@ function exportCSV(transacoes: Transacao[]) {
     t.valor.toFixed(2).replace('.', ','),
     (t as Transacao & { origem?: string }).origem ?? 'manual',
   ])
-  const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(';')).join('\n')
+  const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(';')).join('\n')
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -46,8 +53,17 @@ function exportCSV(transacoes: Transacao[]) {
   URL.revokeObjectURL(url)
 }
 
-export function ExtratoCompleto() {
-  const [mes, setMes] = useState(MESES_OPTIONS[0].value)
+// ─── Component ────────────────────────────────────────────────
+
+interface ExtratoCompletoProps {
+  /** When provided from parent, this month is used (controlled). */
+  mes?: string
+}
+
+export function ExtratoCompleto({ mes: mesProp }: ExtratoCompletoProps) {
+  const [mesInterno, setMesInterno] = useState(mesAtualStr)
+  const mes = mesProp ?? mesInterno
+
   const [tipo, setTipo] = useState('')
   const [categoria, setCategoria] = useState('')
   const [page, setPage] = useState(1)
@@ -80,14 +96,7 @@ export function ExtratoCompleto() {
                 onClick={() => exportCSV(transacoes)}
                 disabled={!transacoes.length}
               >
-                Exportar CSV
-              </Button>
-              <Button
-                size="sm"
-                leftIcon={<Plus className="w-3.5 h-3.5" />}
-                onClick={() => setModalAberto(true)}
-              >
-                Nova despesa
+                CSV
               </Button>
             </div>
           </CardHeader>
@@ -95,19 +104,22 @@ export function ExtratoCompleto() {
 
         {/* Filtros */}
         <div className="px-5 py-3 border-b border-gray-100 flex flex-wrap gap-3 bg-gray-50/50">
-          <select
-            value={mes}
-            onChange={e => { setMes(e.target.value); handleFiltroChange() }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            {MESES_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+          {/* Internal month selector only when not controlled externally */}
+          {!mesProp && (
+            <select
+              value={mesInterno}
+              onChange={(e) => { setMesInterno(e.target.value); handleFiltroChange() }}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              {MESES_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          )}
 
           <select
             value={tipo}
-            onChange={e => { setTipo(e.target.value); handleFiltroChange() }}
+            onChange={(e) => { setTipo(e.target.value); handleFiltroChange() }}
             className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Todos os tipos</option>
@@ -117,11 +129,11 @@ export function ExtratoCompleto() {
 
           <select
             value={categoria}
-            onChange={e => { setCategoria(e.target.value); handleFiltroChange() }}
+            onChange={(e) => { setCategoria(e.target.value); handleFiltroChange() }}
             className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Todas as categorias</option>
-            {CATEGORIAS_TODAS.map(c => (
+            {CATEGORIAS_TODAS.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
@@ -142,22 +154,29 @@ export function ExtratoCompleto() {
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
-            {transacoes.map(t => {
+            {transacoes.map((t) => {
               const isReceita = t.tipo === 'receita'
               const isAutomatica = (t as Transacao & { origem?: string }).origem !== 'manual'
               return (
-                <div key={t.id} className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50/50 group transition-colors">
+                <div
+                  key={t.id}
+                  className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50/50 group transition-colors"
+                >
                   {/* Ícone */}
-                  <div className={cn(
-                    'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
-                    isReceita ? 'bg-green-100' : 'bg-red-100'
-                  )}>
-                    <ShoppingBag className={cn('w-4 h-4', isReceita ? 'text-green-600' : 'text-red-500')} />
+                  <div
+                    className={cn(
+                      'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
+                      isReceita ? 'bg-green-100' : 'bg-red-100',
+                    )}
+                  >
+                    <ShoppingBag
+                      className={cn('w-4 h-4', isReceita ? 'text-green-600' : 'text-red-500')}
+                    />
                   </div>
 
                   {/* Dados */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium text-gray-800 truncate">
                         {t.descricao || t.categoria}
                       </p>
@@ -167,9 +186,13 @@ export function ExtratoCompleto() {
                         </span>
                       )}
                       {isReceita && t.pedido_id && (
-                        <span className="text-[10px] bg-green-100 text-green-600 font-medium px-1.5 py-0.5 rounded flex-shrink-0">
+                        <Link
+                          href={`/pedidos/${t.pedido_id}`}
+                          className="text-[10px] bg-green-100 text-green-600 font-medium px-1.5 py-0.5 rounded flex-shrink-0 flex items-center gap-0.5 hover:bg-green-200 transition-colors"
+                        >
+                          <LinkIcon className="w-2.5 h-2.5" />
                           Pedido
-                        </span>
+                        </Link>
                       )}
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">
@@ -178,21 +201,23 @@ export function ExtratoCompleto() {
                   </div>
 
                   {/* Valor */}
-                  <p className={cn(
-                    'text-sm font-bold flex-shrink-0',
-                    isReceita ? 'text-green-600' : 'text-red-500'
-                  )}>
+                  <p
+                    className={cn(
+                      'text-sm font-bold flex-shrink-0',
+                      isReceita ? 'text-green-600' : 'text-red-500',
+                    )}
+                  >
                     {isReceita ? '+' : '-'}{formatCurrency(t.valor)}
                   </p>
 
-                  {/* Excluir */}
+                  {/* Excluir (manual only) */}
                   {!isAutomatica && (
                     <button
                       onClick={() => deletar(t.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded text-gray-400 hover:text-red-500 hover:bg-red-50"
                       title="Excluir transação"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      ✕
                     </button>
                   )}
                 </div>
@@ -205,7 +230,7 @@ export function ExtratoCompleto() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
             <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
               className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
@@ -215,7 +240,7 @@ export function ExtratoCompleto() {
               Página {page} de {totalPages}
             </span>
             <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
               className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
@@ -225,16 +250,11 @@ export function ExtratoCompleto() {
         )}
       </Card>
 
-      <Modal
+      {/* Modal nova transação (toggle receita/despesa) */}
+      <NovaTransacaoModal
         isOpen={modalAberto}
         onClose={() => setModalAberto(false)}
-        title="Registrar Despesa"
-      >
-        <TransacaoForm
-          tipoInicial="despesa"
-          onSuccess={() => setModalAberto(false)}
-        />
-      </Modal>
+      />
     </>
   )
 }

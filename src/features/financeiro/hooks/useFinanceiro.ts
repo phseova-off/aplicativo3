@@ -136,3 +136,43 @@ export function useClientesAnalise() {
     staleTime: 1000 * 60 * 5,
   })
 }
+
+// ─── Resumo mensal (totals + despesas by category) ────────────
+
+export interface ResumoMesData {
+  receitas: number
+  despesas: number
+  lucroLiquido: number
+  qtdReceitas: number
+  qtdDespesas: number
+  despesasPorCategoria: Record<string, number>
+}
+
+async function fetchResumoMes(mes: string): Promise<ResumoMesData> {
+  const res = await fetch(`/api/financeiro/resumo?mes=${mes}`)
+  if (!res.ok) throw new Error('Erro ao carregar resumo')
+  return res.json()
+}
+
+export function useResumoMes(mes: string) {
+  return useQuery({
+    queryKey: ['financeiro-resumo', mes],
+    queryFn: () => fetchResumoMes(mes),
+    staleTime: 1000 * 60 * 2,
+  })
+}
+
+export function useCreateTransacaoComCallback() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: createTransacao,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['transacoes'] })
+      qc.invalidateQueries({ queryKey: ['transacoes-paginadas'] })
+      qc.invalidateQueries({ queryKey: ['financeiro-dashboard'] })
+      qc.invalidateQueries({ queryKey: ['financeiro-resumo'] })
+      toast.success('Transação registrada!')
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+}
