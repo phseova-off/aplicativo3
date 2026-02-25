@@ -1,4 +1,4 @@
-import { Wallet, ShoppingBag, Star, TrendingUp } from 'lucide-react'
+import { Wallet, ShoppingBag, Clock, TrendingUp } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { formatCurrency } from '@/shared/lib/utils'
 import type { KPIData } from '../types/dashboard.types'
@@ -43,47 +43,46 @@ interface KPIGridProps {
 }
 
 export function KPIGrid({ data }: KPIGridProps) {
-  const { faturamento, pedidos, topProduto, margemMedia } = data
+  const { receitaMes, pedidosAtivos, proximasEntregas, ticketMedio } = data
 
-  const pctStr = faturamento.percentualVsMesAnterior !== null
-    ? `${faturamento.percentualVsMesAnterior >= 0 ? '+' : ''}${faturamento.percentualVsMesAnterior.toFixed(1)}% vs mês anterior`
+  const pctStr = receitaMes.percentualVsMesAnterior !== null
+    ? `${receitaMes.percentualVsMesAnterior >= 0 ? '+' : ''}${receitaMes.percentualVsMesAnterior.toFixed(1)}% vs mês anterior`
     : 'Sem histórico anterior'
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <KPICard
-        label="Faturamento do mês"
-        value={formatCurrency(faturamento.valor)}
+        label="Receita do mês"
+        value={formatCurrency(receitaMes.valor)}
         sub={pctStr}
-        subPositive={faturamento.percentualVsMesAnterior !== null
-          ? faturamento.percentualVsMesAnterior >= 0
+        subPositive={receitaMes.percentualVsMesAnterior !== null
+          ? receitaMes.percentualVsMesAnterior >= 0
           : undefined}
         icon={Wallet}
         iconBg="bg-green-50"
         iconColor="text-green-600"
       />
       <KPICard
-        label="Pedidos do mês"
-        value={String(pedidos.total)}
-        sub={`${pedidos.percentualEntregues.toFixed(0)}% entregues`}
-        subPositive={pedidos.percentualEntregues >= 80}
+        label="Pedidos ativos"
+        value={String(pedidosAtivos)}
+        sub={pedidosAtivos > 0 ? 'em andamento' : 'Nenhum no momento'}
         icon={ShoppingBag}
         iconBg="bg-blue-50"
         iconColor="text-blue-600"
       />
       <KPICard
-        label="Produto top"
-        value={topProduto?.nome ?? '—'}
-        sub={topProduto ? `${topProduto.quantidade} und. vendidas` : 'Sem vendas ainda'}
-        icon={Star}
+        label="Próximas entregas"
+        value={String(proximasEntregas)}
+        sub="nos próximos 7 dias"
+        subPositive={proximasEntregas === 0 ? undefined : proximasEntregas <= 3}
+        icon={Clock}
         iconBg="bg-amber-50"
         iconColor="text-amber-500"
       />
       <KPICard
-        label="Margem média"
-        value={`${margemMedia.toFixed(1)}%`}
-        sub={margemMedia >= 40 ? 'Margem saudável' : margemMedia > 0 ? 'Abaixo do ideal' : 'Sem produtos ativos'}
-        subPositive={margemMedia > 0 ? margemMedia >= 40 : undefined}
+        label="Ticket médio"
+        value={formatCurrency(ticketMedio)}
+        sub={ticketMedio > 0 ? 'por pedido entregue' : 'Sem pedidos entregues'}
         icon={TrendingUp}
         iconBg="bg-primary-50"
         iconColor="text-primary-600"
@@ -91,4 +90,3 @@ export function KPIGrid({ data }: KPIGridProps) {
     </div>
   )
 }
-

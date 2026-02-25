@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useDeferredValue } from 'react'
-import Link from 'next/link'
 import { Plus, Search, X, Filter } from 'lucide-react'
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 import { Select } from '@/shared/components/ui/Select'
 import { PageLoader } from '@/shared/components/ui/LoadingSpinner'
 import { PedidoKanban } from '@/features/pedidos/components/PedidoKanban'
+import { NovoPedidoModal } from '@/features/pedidos/components/NovoPedidoModal'
 import { usePedidos } from '@/features/pedidos/hooks/usePedidos'
 import type { PedidoFilters } from '@/features/pedidos/types/pedido.types'
 import type { PedidoCanal } from '@/server/db/types'
@@ -25,6 +25,7 @@ export default function PedidosPage() {
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [showNovoPedido, setShowNovoPedido] = useState(false)
 
   const deferredSearch = useDeferredValue(search)
 
@@ -56,9 +57,12 @@ export default function PedidosPage() {
             {pedidos?.length ?? 0} pedido{pedidos?.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Link href="/pedidos/novo">
-          <Button leftIcon={<Plus className="w-4 h-4" />}>Novo pedido</Button>
-        </Link>
+        <Button
+          leftIcon={<Plus className="w-4 h-4" />}
+          onClick={() => setShowNovoPedido(true)}
+        >
+          Novo pedido
+        </Button>
       </div>
 
       {/* Search + filter bar */}
@@ -130,6 +134,12 @@ export default function PedidosPage() {
       ) : (
         <PedidoKanban pedidos={pedidos ?? []} />
       )}
+
+      {/* New order modal */}
+      <NovoPedidoModal
+        isOpen={showNovoPedido}
+        onClose={() => setShowNovoPedido(false)}
+      />
     </div>
   )
 }

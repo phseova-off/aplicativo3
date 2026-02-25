@@ -2,24 +2,27 @@ import { Suspense } from 'react'
 import { createSupabaseServerClient } from '@/server/db/client'
 import { UpgradeSuccessToast } from '@/features/planos/components/UpgradeSuccessToast'
 import { KPIGrid }           from '@/features/dashboard/components/KPIGrid'
+import { GraficoMensal }     from '@/features/dashboard/components/GraficoMensal'
 import { ParaFazerHoje }     from '@/features/dashboard/components/ParaFazerHoje'
-import { Sparkline }         from '@/features/dashboard/components/Sparkline'
 import { ProximosPedidos }   from '@/features/dashboard/components/ProximosPedidos'
 import { SugestaoIA }        from '@/features/dashboard/components/SugestaoIA'
+import { AcessoRapido }      from '@/features/dashboard/components/AcessoRapido'
 import {
   KPISkeleton,
+  GraficoSkeleton,
   ParaFazerSkeleton,
-  SparklineSkeleton,
   ProximosPedidosSkeleton,
   SugestaoSkeleton,
+  AcessoRapidoSkeleton,
 } from '@/features/dashboard/components/DashboardSkeletons'
 import {
   getKPIs,
+  getGraficoMensal,
   getParaFazerHoje,
-  getSparkline,
   getProximosPedidos,
   getSugestaoIA,
 } from '@/features/dashboard/lib/dashboardData'
+import type { PlanoTipo } from '@/server/db/types'
 
 // Revalidate every 5 minutes (ISR)
 export const revalidate = 300
@@ -31,14 +34,14 @@ async function KPISection({ userId }: { userId: string }) {
   return <KPIGrid data={data} />
 }
 
+async function GraficoSection({ userId }: { userId: string }) {
+  const data = await getGraficoMensal(userId)
+  return <GraficoMensal data={data} />
+}
+
 async function ParaFazerSection({ userId }: { userId: string }) {
   const data = await getParaFazerHoje(userId)
   return <ParaFazerHoje data={data} />
-}
-
-async function SparklineSection({ userId }: { userId: string }) {
-  const points = await getSparkline(userId)
-  return <Sparkline points={points} />
 }
 
 async function ProximosSection({ userId }: { userId: string }) {
@@ -52,14 +55,10 @@ async function SugestaoSection({ userId, nome }: { userId: string; nome: string 
     getParaFazerHoje(userId),
   ])
 
-  // Pedidos amanhã
-  const amanha = new Date()
-  amanha.setDate(amanha.getDate() + 1)
-
   const sugestao = await getSugestaoIA({
     pedidosHoje:    hoje.pedidosHoje.length,
-    pedidosAmanha:  0,   // fetched separately if needed; keeping lightweight
-    faturamentoMes: kpis.faturamento.valor,
+    pedidosAmanha:  0,
+    faturamentoMes: kpis.receitaMes.valor,
     lotesAbertos:   hoje.lotesPendentes.length,
     topProduto:     kpis.topProduto?.nome ?? null,
     margemMedia:    kpis.margemMedia,
@@ -67,6 +66,14 @@ async function SugestaoSection({ userId, nome }: { userId: string; nome: string 
   })
 
   return <SugestaoIA sugestao={sugestao} />
+}
+
+// ─── Plan badge ────────────────────────────────────────────────
+
+const planoBadgeConfig: Record<PlanoTipo, { label: string; cls: string }> = {
+  free:    { label: 'Grátis',  cls: 'bg-gray-100 text-gray-600'       },
+  starter: { label: 'Starter', cls: 'bg-blue-100 text-blue-700'       },
+  pro:     { label: 'Pro',     cls: 'bg-primary-100 text-primary-700' },
 }
 
 // ─── Greeting helpers ──────────────────────────────────────────
@@ -97,13 +104,20 @@ export default async function DashboardPage() {
   // user is guaranteed by the layout redirect; cast is safe
   const userId = user!.id
 
-  const { data: perfil } = await supabase
-    .from('confeiteiros')
-    .select('nome')
-    .eq('id', userId)
-    .single()
+  // v2: get confeitaria name + plan via confeitaria_membros
+  const { data: membro } = await supabase
+    .from('confeitaria_membros')
+    .select('confeitarias(nome, plano)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
 
-  const nome = perfil?.nome ?? user!.email ?? 'Confeiteira'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const confeitaria = (membro as any)?.confeitarias
+  const nome  = confeitaria?.nome  ?? user!.email ?? 'Confeiteira'
+  const plano = (confeitaria?.plano ?? 'free') as PlanoTipo
+  const badge = planoBadgeConfig[plano]
 
   return (
     <div className="space-y-6 pb-10">
@@ -116,10 +130,20 @@ export default async function DashboardPage() {
       {/* ── Header ─────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{greeting(nome)}</h1>
-          <p className="text-sm text-gray-500 mt-0.5 capitalize">{todayLabel()}</p>
+          <div className="flex items-center gap-2 mb-0.5">
+            <h1 className="text-2xl font-bold text-gray-900">{greeting(nome)}</h1>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>
+              {badge.label}
+            </span>
+          </div>
+          <p className="text-sm text-gray-500 capitalize">{todayLabel()}</p>
         </div>
       </div>
+
+      {/* ── Acesso rápido ──────────────────────────────── */}
+      <Suspense fallback={<AcessoRapidoSkeleton />}>
+        <AcessoRapido />
+      </Suspense>
 
       {/* ── AI Suggestion ──────────────────────────────── */}
       <Suspense fallback={<SugestaoSkeleton />}>
@@ -134,14 +158,14 @@ export default async function DashboardPage() {
       {/* ── Main content: 2-col on large ───────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Left: Para fazer hoje + Sparkline */}
+        {/* Left: Para fazer hoje + Gráfico mensal */}
         <div className="space-y-6 lg:col-span-1">
           <Suspense fallback={<ParaFazerSkeleton />}>
             <ParaFazerSection userId={userId} />
           </Suspense>
 
-          <Suspense fallback={<SparklineSkeleton />}>
-            <SparklineSection userId={userId} />
+          <Suspense fallback={<GraficoSkeleton />}>
+            <GraficoSection userId={userId} />
           </Suspense>
         </div>
 

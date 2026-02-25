@@ -2,26 +2,29 @@ import type { PedidoStatus } from '@/server/db/types'
 
 // ─── KPIs ─────────────────────────────────────────────────────
 
-export interface KPIFaturamento {
-  valor: number
-  percentualVsMesAnterior: number | null   // null = sem histórico
-}
-
-export interface KPIPedidos {
-  total: number
-  percentualEntregues: number              // 0–100
-}
-
-export interface KPITopProduto {
-  nome: string
-  quantidade: number
-}
-
 export interface KPIData {
-  faturamento: KPIFaturamento
-  pedidos: KPIPedidos
-  topProduto: KPITopProduto | null
-  margemMedia: number                      // 0–100 %
+  /** Soma de valor_total dos pedidos entregues no mês corrente */
+  receitaMes: {
+    valor: number
+    percentualVsMesAnterior: number | null   // null = sem histórico
+  }
+  /** Pedidos com status != entregue e != cancelado */
+  pedidosAtivos: number
+  /** Pedidos com data_entrega nos próximos 7 dias e status ativo */
+  proximasEntregas: number
+  /** Receita / pedidos entregues (0 se sem dados) */
+  ticketMedio: number
+  /** Kept for AI suggestion context */
+  topProduto: { nome: string; quantidade: number } | null
+  margemMedia: number
+}
+
+// ─── Weekly bar chart (current month) ────────────────────────
+
+export interface SemanaMes {
+  semana: string   // "Sem 1" … "Sem 4"
+  receita: number  // sum of valor_total for non-cancelled orders that week
+  pedidos: number  // count
 }
 
 // ─── "Para fazer hoje" ────────────────────────────────────────

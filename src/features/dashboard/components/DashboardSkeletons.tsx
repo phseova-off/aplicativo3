@@ -79,3 +79,29 @@ export function SugestaoSkeleton() {
     </div>
   )
 }
+
+export function GraficoSkeleton() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+      <Pulse className="h-4 w-52 mb-4" />
+      <div className="flex items-end gap-3 h-40">
+        {[60, 90, 75, 45].map((h, i) => (
+          <Pulse key={i} className="flex-1 rounded-t-md" style={{ height: `${h}%` }} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function AcessoRapidoSkeleton() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <Pulse className="h-3 w-24 mb-3" />
+      <div className="flex gap-2">
+        <Pulse className="h-8 w-28 rounded-lg" />
+        <Pulse className="h-8 w-28 rounded-lg" />
+        <Pulse className="h-8 w-36 rounded-lg" />
+      </div>
+    </div>
+  )
+}

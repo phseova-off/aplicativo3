@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '@/server/db/client'
 import { openai } from '@/server/services/openaiService'
 import type {
   KPIData,
+  SemanaMes,
   ParaFazerHojeData,
   SparklinePoint,
   ProximoPedido,
@@ -32,46 +33,84 @@ function nDaysAgo(n: number): string {
   return d.toISOString().split('T')[0]
 }
 
+function nDaysFromNow(n: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + n)
+  return d.toISOString().split('T')[0]
+}
+
 // ─── KPIs ─────────────────────────────────────────────────────
 
 export async function getKPIs(userId: string): Promise<KPIData> {
   const supabase = await createSupabaseServerClient()
 
-  const mesIni  = startOfMonth()
-  const mesFim  = endOfMonth()
+  const mesIni    = startOfMonth()
+  const mesFim    = endOfMonth()
   const mesAntIni = startOfMonth(-1)
   const mesAntFim = endOfMonth(-1)
+  const hoje      = todayISO()
+  const em7dias   = nDaysFromNow(7)
 
   const [
-    transacoesMes,
-    transacoesMesAnt,
     pedidosMes,
+    pedidosMesAnt,
+    pedidosAtivosCnt,
+    proximasCnt,
     produtos,
     itensMes,
   ] = await Promise.all([
-    supabase.from('transacoes').select('tipo,valor')
-      .eq('confeiteiro_id', userId).gte('data', mesIni).lte('data', mesFim),
-    supabase.from('transacoes').select('tipo,valor')
-      .eq('confeiteiro_id', userId).gte('data', mesAntIni).lte('data', mesAntFim),
-    supabase.from('pedidos').select('id,status')
-      .eq('confeiteiro_id', userId).gte('created_at', `${mesIni}T00:00:00Z`).lte('created_at', `${mesFim}T23:59:59Z`),
-    supabase.from('produtos').select('nome,preco,custo').eq('confeiteiro_id', userId).eq('ativo', true),
-    supabase.from('itens_pedido').select('nome_produto,quantidade,pedido_id'),
+    // All non-cancelled orders this month (with valor_total + status)
+    supabase.from('pedidos')
+      .select('id,status,valor_total')
+      .eq('confeiteiro_id', userId)
+      .gte('created_at', `${mesIni}T00:00:00Z`)
+      .lte('created_at', `${mesFim}T23:59:59Z`)
+      .neq('status', 'cancelado'),
+    // Delivered orders last month (for comparison)
+    supabase.from('pedidos')
+      .select('valor_total')
+      .eq('confeiteiro_id', userId)
+      .eq('status', 'entregue')
+      .gte('created_at', `${mesAntIni}T00:00:00Z`)
+      .lte('created_at', `${mesAntFim}T23:59:59Z`),
+    // Active orders count (not delivered, not cancelled)
+    supabase.from('pedidos')
+      .select('*', { count: 'exact', head: true })
+      .eq('confeiteiro_id', userId)
+      .not('status', 'in', '("entregue","cancelado")'),
+    // Upcoming deliveries (next 7 days, active)
+    supabase.from('pedidos')
+      .select('*', { count: 'exact', head: true })
+      .eq('confeiteiro_id', userId)
+      .not('status', 'in', '("entregue","cancelado")')
+      .gte('data_entrega', hoje)
+      .lte('data_entrega', em7dias),
+    // Products for margem média
+    supabase.from('produtos')
+      .select('nome,preco,custo')
+      .eq('confeiteiro_id', userId)
+      .eq('ativo', true),
+    // Items this month for top produto
+    supabase.from('itens_pedido')
+      .select('nome_produto,quantidade,pedido_id'),
   ])
 
-  // Faturamento (receitas only)
-  const receita    = (transacoesMes.data ?? []).filter((t) => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0)
-  const receitaAnt = (transacoesMesAnt.data ?? []).filter((t) => t.tipo === 'receita').reduce((s, t) => s + t.valor, 0)
-  const pctVsAnt   = receitaAnt > 0 ? ((receita - receitaAnt) / receitaAnt) * 100 : null
+  // Receita: sum of valor_total for delivered orders this month
+  const pedsMes = pedidosMes.data ?? []
+  const entregues = pedsMes.filter((p) => p.status === 'entregue')
+  const receitaValor = entregues.reduce((s, p) => s + (p.valor_total ?? 0), 0)
 
-  // Pedidos
-  const ped = pedidosMes.data ?? []
-  const totalPed = ped.length
-  const entregues = ped.filter((p) => p.status === 'entregue').length
-  const pctEntregues = totalPed > 0 ? (entregues / totalPed) * 100 : 0
+  // Previous month receita for comparison
+  const receitaAnt = (pedidosMesAnt.data ?? []).reduce((s, p) => s + (p.valor_total ?? 0), 0)
+  const percentualVsMesAnterior = receitaAnt > 0
+    ? ((receitaValor - receitaAnt) / receitaAnt) * 100
+    : null
 
-  // Top produto por quantidade nos itens do mês
-  const pedIds = new Set(ped.map((p) => p.id))
+  // Ticket médio
+  const ticketMedio = entregues.length > 0 ? receitaValor / entregues.length : 0
+
+  // Top produto this month
+  const pedIds = new Set(pedsMes.map((p) => p.id))
   const itensMesData = (itensMes.data ?? []).filter((i) => pedIds.has(i.pedido_id))
   const contagem: Record<string, number> = {}
   for (const item of itensMesData) {
@@ -87,11 +126,46 @@ export async function getKPIs(userId: string): Promise<KPIData> {
     : 0
 
   return {
-    faturamento: { valor: receita, percentualVsMesAnterior: pctVsAnt },
-    pedidos: { total: totalPed, percentualEntregues: pctEntregues },
+    receitaMes: { valor: receitaValor, percentualVsMesAnterior },
+    pedidosAtivos: pedidosAtivosCnt.count ?? 0,
+    proximasEntregas: proximasCnt.count ?? 0,
+    ticketMedio,
     topProduto,
     margemMedia,
   }
+}
+
+// ─── Gráfico mensal (semanas do mês corrente) ─────────────────
+
+export async function getGraficoMensal(userId: string): Promise<SemanaMes[]> {
+  const supabase = await createSupabaseServerClient()
+
+  const mesIni = startOfMonth()
+  const mesFim = endOfMonth()
+
+  const { data } = await supabase
+    .from('pedidos')
+    .select('created_at,valor_total,status')
+    .eq('confeiteiro_id', userId)
+    .neq('status', 'cancelado')
+    .gte('created_at', `${mesIni}T00:00:00Z`)
+    .lte('created_at', `${mesFim}T23:59:59Z`)
+
+  const semanas: SemanaMes[] = [
+    { semana: 'Sem 1', receita: 0, pedidos: 0 },
+    { semana: 'Sem 2', receita: 0, pedidos: 0 },
+    { semana: 'Sem 3', receita: 0, pedidos: 0 },
+    { semana: 'Sem 4', receita: 0, pedidos: 0 },
+  ]
+
+  for (const p of data ?? []) {
+    const day = new Date(p.created_at).getDate()
+    const idx = day <= 7 ? 0 : day <= 14 ? 1 : day <= 21 ? 2 : 3
+    semanas[idx].receita += p.valor_total ?? 0
+    semanas[idx].pedidos += 1
+  }
+
+  return semanas
 }
 
 // ─── Para fazer hoje ──────────────────────────────────────────

@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from '@/server/db/client'
 import { pedidoSchema } from '@/features/pedidos/schemas/pedido.schema'
 import { assertPodeCriarPedido } from '@/server/lib/planos'
 import { handleApiError } from '@/server/middleware/errorHandler'
-import type { PedidoCanal, PedidoStatus } from '@/server/db/types'
+import type { PedidoCanal, PedidoStatus, PlanoTipo } from '@/server/db/types'
 
 export async function GET(request: Request) {
   const supabase = await createSupabaseServerClient()
@@ -58,27 +58,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // ── Plan limit check ──────────────────────────────────────
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: confeiteiro } = await (supabase as any)
-      .from('confeiteiros')
-      .select('plano')
-      .eq('id', user.id)
-      .single() as { data: { plano: string } | null }
-
-    const startOfMonth = new Date()
-    startOfMonth.setDate(1)
-    startOfMonth.setHours(0, 0, 0, 0)
+    // ── Plan limit check (v2 schema) ──────────────────────────
+    const { data: membro } = await supabase
+      .from('confeitaria_membros')
+      .select('confeitarias(plano, pedidos_mes_atual)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { count: pedidosMes } = await (supabase as any)
-      .from('pedidos')
-      .select('*', { count: 'exact', head: true })
-      .eq('confeiteiro_id', user.id)
-      .gte('created_at', startOfMonth.toISOString())
-      .neq('status', 'cancelado') as { count: number | null }
+    const confeitaria = (membro as any)?.confeitarias
+    const plano: PlanoTipo = confeitaria?.plano ?? 'free'
+    const pedidosMesAtual: number = confeitaria?.pedidos_mes_atual ?? 0
 
-    assertPodeCriarPedido((confeiteiro?.plano ?? 'free') as import('@/server/db/types').PlanoTipo, pedidosMes ?? 0)
+    assertPodeCriarPedido(plano, pedidosMesAtual)
 
     // ── Parse & validate body ─────────────────────────────────
     const body = await request.json()
@@ -100,10 +94,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error?.message ?? 'Failed to create' }, { status: 500 })
     }
 
+    // ── Insert itens ──────────────────────────────────────────
     if (itens && itens.length > 0) {
       await supabase
         .from('itens_pedido')
         .insert(itens.map((item) => ({ ...item, pedido_id: pedido.id })))
+    }
+
+    // ── Auto-create revenue transaction ──────────────────────
+    if ((pedido.valor_total ?? 0) > 0) {
+      const dataTransacao = pedido.data_entrega
+        ? String(pedido.data_entrega).split('T')[0]
+        : new Date().toISOString().split('T')[0]
+
+      await supabase.from('transacoes').insert({
+        confeiteiro_id: user.id,
+        tipo:       'receita',
+        categoria:  'pedido',
+        valor:      pedido.valor_total,
+        descricao:  `Pedido #${pedido.id.slice(0, 8)} — ${pedido.cliente_nome}`,
+        data:       dataTransacao,
+        pedido_id:  pedido.id,
+      })
     }
 
     const { data: full } = await supabase

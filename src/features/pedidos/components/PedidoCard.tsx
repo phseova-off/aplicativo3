@@ -13,6 +13,24 @@ interface PedidoCardProps {
   draggable?: boolean
 }
 
+function getUrgencyBorder(pedido: PedidoWithItens): string {
+  if (
+    !pedido.data_entrega ||
+    pedido.status === 'entregue' ||
+    pedido.status === 'cancelado'
+  ) {
+    return ''
+  }
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  const entrega = new Date(pedido.data_entrega)
+  entrega.setHours(0, 0, 0, 0)
+  const diffDays = Math.ceil((entrega.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24))
+  if (diffDays < 2) return 'border-l-4 border-l-red-400'
+  if (diffDays <= 7) return 'border-l-4 border-l-amber-400'
+  return 'border-l-4 border-l-green-400'
+}
+
 export function PedidoCard({ pedido, draggable = false }: PedidoCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: pedido.id, disabled: !draggable })
@@ -24,11 +42,13 @@ export function PedidoCard({ pedido, draggable = false }: PedidoCardProps) {
       ? pedido.itens_pedido.reduce((sum, it) => sum + it.quantidade * it.preco_unitario, 0)
       : pedido.valor_total
 
+  const urgencyBorder = getUrgencyBorder(pedido)
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`group relative bg-white rounded-xl border shadow-sm transition-all
+      className={`group relative bg-white rounded-xl border shadow-sm transition-all ${urgencyBorder}
         ${isDragging
           ? 'opacity-50 shadow-lg scale-[1.02] z-50 border-primary-300'
           : 'border-gray-200 hover:border-primary-200 hover:shadow-md'}`}
