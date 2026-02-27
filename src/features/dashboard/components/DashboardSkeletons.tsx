@@ -1,7 +1,7 @@
 import { cn } from '@/shared/lib/utils'
 
-function Pulse({ className }: { className?: string }) {
-  return <div className={cn('bg-gray-200 animate-pulse rounded', className)} />
+function Pulse({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return <div className={cn('bg-gray-200 animate-pulse rounded', className)} style={style} />
 }
 
 export function KPISkeleton() {

@@ -33,9 +33,10 @@ export const PEDIDO_STATUS_VARIANTS: Record<
 }
 
 export const PEDIDO_CANAL_LABELS: Record<PedidoCanal, string> = {
-  whatsapp: 'WhatsApp',
-  instagram: 'Instagram',
-  presencial: 'Presencial',
+  whatsapp:         'WhatsApp',
+  instagram:        'Instagram',
+  presencial:       'Presencial',
+  cardapio_publico: 'Cardápio',
 }
 
 export const PEDIDO_STATUS_COLUMN_COLORS: Record<PedidoStatus, { header: string; body: string }> = {

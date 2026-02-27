@@ -30,6 +30,9 @@
       "@/features/*": [
         "./src/features/*"
       ],
+      "@/lib/*": [
+        "./src/lib/*"
+      ],
       "@/shared/*": [
         "./src/shared/*"
       ],

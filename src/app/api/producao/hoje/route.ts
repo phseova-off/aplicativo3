@@ -37,7 +37,8 @@ export async function GET() {
     .eq('confeiteiro_id', user.id)
     .in('status', ['planejado', 'em_andamento'])
     .order('data_producao', { ascending: true }) as {
-      data: Array<Record<string, unknown>> | null
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: any[] | null
       error: Error | null
     }
 

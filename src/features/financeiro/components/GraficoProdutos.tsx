@@ -66,7 +66,7 @@ export function GraficoProdutos({ dados }: Props) {
             width={90}
           />
           <Tooltip
-            formatter={(v: number) => [`${v}%`, 'Margem']}
+            formatter={(v: number | undefined) => [`${v ?? 0}%`, 'Margem']}
             contentStyle={{
               borderRadius: '8px',
               border: '1px solid #e2e8f0',

@@ -18,11 +18,12 @@ export default async function DashboardLayout({
   }
 
   // Prefer v2 confeitarias table; fall back to legacy confeiteiros
-  const { data: confeitaria } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: confeitaria } = await (supabase as any)
     .from('confeitarias')
     .select('nome, plano, onboarding_completo')
     .eq('id', user.id)
-    .maybeSingle()
+    .maybeSingle() as { data: { nome: string; plano: string; onboarding_completo: boolean } | null }
 
   if (!confeitaria?.onboarding_completo) {
     redirect('/onboarding')

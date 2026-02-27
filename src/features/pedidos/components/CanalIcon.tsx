@@ -1,4 +1,4 @@
-import { MessageCircle, Instagram, Store } from 'lucide-react'
+import { MessageCircle, Instagram, Store, BookOpen } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import type { PedidoCanal } from '@/server/db/types'
 import { PEDIDO_CANAL_LABELS } from '../types/pedido.types'
@@ -14,9 +14,10 @@ const canalConfig: Record<
   PedidoCanal,
   { icon: React.ElementType; color: string; bg: string }
 > = {
-  whatsapp:   { icon: MessageCircle, color: 'text-green-600',  bg: 'bg-green-100'  },
-  instagram:  { icon: Instagram,     color: 'text-pink-600',   bg: 'bg-pink-100'   },
-  presencial: { icon: Store,         color: 'text-blue-600',   bg: 'bg-blue-100'   },
+  whatsapp:         { icon: MessageCircle, color: 'text-green-600',  bg: 'bg-green-100'  },
+  instagram:        { icon: Instagram,     color: 'text-pink-600',   bg: 'bg-pink-100'   },
+  presencial:       { icon: Store,         color: 'text-blue-600',   bg: 'bg-blue-100'   },
+  cardapio_publico: { icon: BookOpen,      color: 'text-orange-600', bg: 'bg-orange-100' },
 }
 
 export function CanalIcon({ canal, showLabel = false, className, size = 'sm' }: CanalIconProps) {

@@ -530,11 +530,37 @@ export interface Database {
         Update:        CronogramaUpdate
         Relationships: []
       }
+      feedbacks: {
+        Row: {
+          id:         string
+          user_id:    string | null
+          tipo:       'geral' | 'bug' | 'sugestao'
+          texto:      string
+          user_email: string | null
+          user_nome:  string | null
+          created_at: string
+        }
+        Insert: {
+          tipo:       'geral' | 'bug' | 'sugestao'
+          texto:      string
+          user_id?:   string | null
+          user_email?: string | null
+          user_nome?:  string | null
+        }
+        Update: {
+          tipo?:       'geral' | 'bug' | 'sugestao'
+          texto?:      string
+          user_email?: string | null
+          user_nome?:  string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       /** Agregação financeira mensal por confeitaria — migration 012 */
       resumo_financeiro_mensal: {
         Row: ResumoFinanceiroMensal
+        Relationships: []
       }
     }
     Functions: {

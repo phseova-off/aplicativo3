@@ -33,7 +33,7 @@ export function OnboardingForm() {
     const { error } = await supabase
       .from('confeiteiros')
       .update({
-        nome: values.nome_negocio,
+        nome: values.nome,
         telefone: values.telefone ?? null,
         cidade: values.cidade ?? null,
         onboarding_completo: true,
@@ -55,9 +55,9 @@ export function OnboardingForm() {
         label="Nome do negócio"
         placeholder="Ex: Doceria da Maria"
         leftIcon={<Store className="w-4 h-4" />}
-        error={errors.nome_negocio?.message}
+        error={errors.nome?.message}
         required
-        {...register('nome_negocio')}
+        {...register('nome')}
       />
       <Input
         label="WhatsApp (opcional)"

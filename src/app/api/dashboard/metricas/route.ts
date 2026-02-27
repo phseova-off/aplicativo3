@@ -34,9 +34,12 @@ export async function GET() {
       .lte('data', mesFim),
   ])
 
-  const pedidos   = pedidosRes.data  ?? []
-  const receitas  = receitasRes.data ?? []
-  const despesas  = despesasRes.data ?? []
+  type PedidoRow = { id: string; cliente_nome: string; valor_total: number | null; status: string | null; canal: string | null; data_entrega: string | null; created_at: string | null }
+  type TransacaoRow = { valor: number | null }
+
+  const pedidos  = (pedidosRes.data  ?? []) as PedidoRow[]
+  const receitas = (receitasRes.data ?? []) as TransacaoRow[]
+  const despesas = (despesasRes.data ?? []) as TransacaoRow[]
 
   const receitaMes = receitas.reduce((s, t) => s + (t.valor ?? 0), 0)
   const despesaMes = despesas.reduce((s, t) => s + (t.valor ?? 0), 0)

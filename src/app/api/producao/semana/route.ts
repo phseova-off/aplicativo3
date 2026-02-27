@@ -73,7 +73,8 @@ export async function GET(request: Request) {
     // Agrupamento de produtos (para otimizar produção em lote)
     const prodMap = new Map<string, { nome: string; quantidade: number; produto_id: string | null }>()
     dayPedidos.forEach((p) => {
-      ;(p.itens_pedido ?? []).forEach((item) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(p.itens_pedido ?? []).forEach((item: any) => {
         const key = item.produto_id ?? item.nome_produto
         if (prodMap.has(key)) {
           prodMap.get(key)!.quantidade += item.quantidade
@@ -91,7 +92,8 @@ export async function GET(request: Request) {
     // Estimativa de tempo total para o dia
     let tempoEstimadoMinutos = 0
     dayPedidos.forEach((p) => {
-      ;(p.itens_pedido ?? []).forEach((item) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(p.itens_pedido ?? []).forEach((item: any) => {
         if (item.produto_id) {
           const prod = produtoMap.get(item.produto_id)
           if (prod?.tempo_producao_minutos && prod.rendimento) {

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { LoginForm } from '@/features/auth/components/LoginForm'
 
 export const metadata = { title: 'Entrar — Doceria Pro' }
@@ -16,7 +17,9 @@ export default function LoginPage() {
           <p className="text-gray-600 mt-1">Entre na sua conta para continuar.</p>
         </div>
         <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
-          <LoginForm />
+          <Suspense>
+            <LoginForm />
+          </Suspense>
         </div>
       </div>
     </div>

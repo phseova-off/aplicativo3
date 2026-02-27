@@ -64,25 +64,22 @@ export default function CardapioPublicoConfigPage() {
     if (!confeitaria) return
     setLoadingProdutos(true)
     const supabase = createSupabaseBrowserClient()
-    supabase.auth
-      .getUser()
-      .then(({ data: { user } }) => {
-        if (!user) return []
-        return supabase
+    void (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase as any)
           .from('produtos')
           .select('id, nome, categoria, preco, ativo, visivel_no_cardapio')
           .eq('confeiteiro_id', user.id)
           .order('categoria')
           .order('nome')
-      })
-      .then((result) => {
-        if (result && !('error' in result && result.error)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const data = (result as any).data as Produto[] | null
-          setProdutos(data ?? [])
-        }
-      })
-      .finally(() => setLoadingProdutos(false))
+        setProdutos((data as Produto[]) ?? [])
+      } finally {
+        setLoadingProdutos(false)
+      }
+    })()
   }, [confeitaria])
 
   async function handleToggle() {

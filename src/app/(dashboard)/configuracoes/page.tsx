@@ -72,7 +72,8 @@ function SecaoPerfil() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
       .from('confeitarias')
       .update({
         nome: values.nome,

@@ -10,6 +10,7 @@ export const marketingSchema = z.object({
 export const dataComemorativaSchema = z.object({
   data: z.string(),
   nome: z.string(),
+  emoji: z.string().default(''),
   relevancia: z.enum(['alta', 'media', 'baixa']),
 })
 

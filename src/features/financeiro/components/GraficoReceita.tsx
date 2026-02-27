@@ -39,7 +39,7 @@ export function GraficoReceita({ dados }: Props) {
             width={46}
           />
           <Tooltip
-            formatter={(v: number) => formatBRL(v)}
+            formatter={(v: number | undefined) => formatBRL(v ?? 0)}
             contentStyle={{
               borderRadius: '8px',
               border: '1px solid #e2e8f0',
