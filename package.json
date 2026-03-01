@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "postbuild": "node scripts/create-middleware-nft.js",
+    "build": "next build && node scripts/create-middleware-nft.js",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
