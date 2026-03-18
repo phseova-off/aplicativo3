@@ -166,6 +166,21 @@ export interface AlertaIngrediente {
   created_at: string
 }
 
+/**
+ * Insight diário gerado por IA (ou fallback) com cache de 24h.
+ * Unique constraint: (confeitaria_id, data).
+ */
+export interface InsightDiario {
+  id: string
+  confeitaria_id: string
+  texto: string
+  acao_sugerida: string | null
+  acao_url: string | null
+  gerado_por: 'ia' | 'fallback'
+  data: string          // DATE: YYYY-MM-DD
+  created_at: string
+}
+
 // ─── Tables — Schema v1 (legado — mantido para compatibilidade) ─
 
 /**
@@ -465,6 +480,13 @@ export interface Database {
         Row:           AlertaIngrediente
         Insert:        Omit<AlertaIngrediente, 'id' | 'created_at'>
         Update:        Pick<AlertaIngrediente, 'lido'>
+        Relationships: []
+      }
+      // ── Insights diários IA (migration 014) ────────────────
+      insights_diarios: {
+        Row:    InsightDiario
+        Insert: Omit<InsightDiario, 'id' | 'created_at'>
+        Update: Partial<Pick<InsightDiario, 'texto' | 'acao_sugerida' | 'acao_url' | 'gerado_por'>>
         Relationships: []
       }
       // ── Idempotência Stripe (migration 007) ──────────────

@@ -2,11 +2,21 @@ import { Suspense } from 'react'
 import { createSupabaseServerClient } from '@/server/db/client'
 import { UpgradeSuccessToast } from '@/features/planos/components/UpgradeSuccessToast'
 import { KPIGrid }           from '@/features/dashboard/components/KPIGrid'
-import { GraficoMensal }     from '@/features/dashboard/components/GraficoMensal'
+import dynamic from 'next/dynamic'
+
+const GraficoMensal = dynamic(
+  () =>
+    import('@/features/dashboard/components/GraficoMensal').then(
+      (m) => ({ default: m.GraficoMensal }),
+    ),
+  { ssr: false, loading: () => <div className="h-[200px] bg-gray-50 rounded-xl animate-pulse" /> },
+)
+
 import { ParaFazerHoje }     from '@/features/dashboard/components/ParaFazerHoje'
 import { ProximosPedidos }   from '@/features/dashboard/components/ProximosPedidos'
 import { SugestaoIA }        from '@/features/dashboard/components/SugestaoIA'
 import { AcessoRapido }      from '@/features/dashboard/components/AcessoRapido'
+import { AlertasBanner }     from '@/features/dashboard/components/AlertasBanner'
 import {
   KPISkeleton,
   GraficoSkeleton,
@@ -139,6 +149,9 @@ export default async function DashboardPage() {
           <p className="text-sm text-gray-500 capitalize">{todayLabel()}</p>
         </div>
       </div>
+
+      {/* ── Alertas de negócio ───────────────────────────── */}
+      <AlertasBanner />
 
       {/* ── Acesso rápido ──────────────────────────────── */}
       <Suspense fallback={<AcessoRapidoSkeleton />}>

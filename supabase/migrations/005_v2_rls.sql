@@ -82,11 +82,11 @@ CREATE POLICY "confeitarias_select_membros"
   TO authenticated
   USING (public.is_member(id));
 
-CREATE POLICY "confeitarias_insert_trigger"
+CREATE POLICY "confeitarias_insert_owner"
   ON public.confeitarias
   FOR INSERT
   TO authenticated
-  WITH CHECK (public.is_owner(id));
+  WITH CHECK (id = (SELECT auth.uid()));
 
 CREATE POLICY "confeitarias_update_owner"
   ON public.confeitarias
